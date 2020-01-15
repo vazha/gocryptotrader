@@ -7,13 +7,13 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/core"
-	"github.com/thrasher-corp/gocryptotrader/dispatch"
-	"github.com/thrasher-corp/gocryptotrader/engine"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
-	log "github.com/thrasher-corp/gocryptotrader/logger"
-	"github.com/thrasher-corp/gocryptotrader/signaler"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/core"
+	"github.com/vazha/gocryptotrader/dispatch"
+	"github.com/vazha/gocryptotrader/engine"
+	"github.com/vazha/gocryptotrader/exchanges/request"
+	log "github.com/vazha/gocryptotrader/logger"
+	"github.com/vazha/gocryptotrader/signaler"
 )
 
 func main() {

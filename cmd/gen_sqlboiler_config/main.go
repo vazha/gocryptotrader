@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/config"
-	"github.com/thrasher-corp/gocryptotrader/core"
-	"github.com/thrasher-corp/gocryptotrader/database"
-	"github.com/thrasher-corp/gocryptotrader/database/repository"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/config"
+	"github.com/vazha/gocryptotrader/core"
+	"github.com/vazha/gocryptotrader/database"
+	"github.com/vazha/gocryptotrader/database/repository"
 )
 
 var (

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/thrasher-corp/gocryptotrader/logger"
+	log "github.com/vazha/gocryptotrader/logger"
 )
 
 // DefaultCheckInterval is a const that defines the amount of time between

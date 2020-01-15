@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/thrasher-corp/gocryptotrader/config"
+	"github.com/vazha/gocryptotrader/config"
 )
 
 func loadConfig(t *testing.T) *config.Config {

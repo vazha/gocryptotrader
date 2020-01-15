@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/thrasher-corp/gocryptotrader/logger"
+	log "github.com/vazha/gocryptotrader/logger"
 )
 
 const (

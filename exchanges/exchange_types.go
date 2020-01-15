@@ -3,11 +3,11 @@ package exchange
 import (
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/config"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/protocol"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/websocket/wshandler"
+	"github.com/vazha/gocryptotrader/config"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/exchanges/protocol"
+	"github.com/vazha/gocryptotrader/exchanges/request"
+	"github.com/vazha/gocryptotrader/exchanges/websocket/wshandler"
 )
 
 // Endpoint authentication types

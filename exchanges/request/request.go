@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/common/timedmutex"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/mock"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/nonce"
-	log "github.com/thrasher-corp/gocryptotrader/logger"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/common/timedmutex"
+	"github.com/vazha/gocryptotrader/exchanges/mock"
+	"github.com/vazha/gocryptotrader/exchanges/nonce"
+	log "github.com/vazha/gocryptotrader/logger"
 )
 
 // NewRateLimit creates a new RateLimit

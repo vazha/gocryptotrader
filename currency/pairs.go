@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"strings"
 
-	log "github.com/thrasher-corp/gocryptotrader/logger"
+	log "github.com/vazha/gocryptotrader/logger"
 )
 
 // NewPairsFromStrings takes in currency pair strings and returns a currency

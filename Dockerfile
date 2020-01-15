@@ -1,5 +1,5 @@
 FROM golang:1.13 as build
-WORKDIR /go/src/github.com/thrasher-corp/gocryptotrader
+WORKDIR /go/src/github.com/vazha/gocryptotrader
 COPY . .
 RUN GO111MODULE=on go mod vendor
 RUN mv -vn config_example.json config.json \
@@ -13,6 +13,6 @@ VOLUME /root/.gocryptotrader
 RUN apk update && apk add --no-cache ca-certificates bash
 COPY --from=build /go/bin/gocryptotrader /app/
 COPY --from=build /go/bin/gctcli /app/
-COPY --from=build /go/src/github.com/thrasher-corp/gocryptotrader/config.json /app/
+COPY --from=build /go/src/github.com/vazha/gocryptotrader/config.json /app/
 EXPOSE 9050-9053
 ENTRYPOINT [ "/app/gocryptotrader" ]

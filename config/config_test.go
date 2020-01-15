@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/connchecker"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/database"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
-	log "github.com/thrasher-corp/gocryptotrader/logger"
-	"github.com/thrasher-corp/gocryptotrader/ntpclient"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/connchecker"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/database"
+	"github.com/vazha/gocryptotrader/exchanges/asset"
+	log "github.com/vazha/gocryptotrader/logger"
+	"github.com/vazha/gocryptotrader/ntpclient"
 )
 
 const (

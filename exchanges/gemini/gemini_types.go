@@ -1,6 +1,6 @@
 package gemini
 
-import "github.com/thrasher-corp/gocryptotrader/currency"
+import "github.com/vazha/gocryptotrader/currency"
 
 // Ticker holds returned ticker data from the exchange
 type Ticker struct {

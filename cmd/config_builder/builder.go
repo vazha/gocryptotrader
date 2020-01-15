@@ -5,9 +5,9 @@ import (
 	"log"
 	"sync"
 
-	"github.com/thrasher-corp/gocryptotrader/config"
-	"github.com/thrasher-corp/gocryptotrader/engine"
-	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
+	"github.com/vazha/gocryptotrader/config"
+	"github.com/vazha/gocryptotrader/engine"
+	exchange "github.com/vazha/gocryptotrader/exchanges"
 )
 
 func main() {

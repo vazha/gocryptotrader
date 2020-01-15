@@ -4,9 +4,9 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/thrasher-corp/gocryptotrader/communications"
-	"github.com/thrasher-corp/gocryptotrader/communications/base"
-	log "github.com/thrasher-corp/gocryptotrader/logger"
+	"github.com/vazha/gocryptotrader/communications"
+	"github.com/vazha/gocryptotrader/communications/base"
+	log "github.com/vazha/gocryptotrader/logger"
 )
 
 // commsManager starts the NTP manager

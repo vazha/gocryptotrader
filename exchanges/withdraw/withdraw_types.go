@@ -1,6 +1,6 @@
 package withdraw
 
-import "github.com/thrasher-corp/gocryptotrader/currency"
+import "github.com/vazha/gocryptotrader/currency"
 
 // GenericInfo stores genric withdraw request info
 type GenericInfo struct {

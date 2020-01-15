@@ -19,10 +19,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/currency/forexprovider/base"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
-	log "github.com/thrasher-corp/gocryptotrader/logger"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/currency/forexprovider/base"
+	"github.com/vazha/gocryptotrader/exchanges/request"
+	log "github.com/vazha/gocryptotrader/logger"
 )
 
 // Setup sets appropriate values for CurrencyLayer

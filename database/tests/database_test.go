@@ -7,10 +7,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/thrasher-corp/gocryptotrader/database"
-	"github.com/thrasher-corp/gocryptotrader/database/drivers"
-	psqlConn "github.com/thrasher-corp/gocryptotrader/database/drivers/postgres"
-	sqliteConn "github.com/thrasher-corp/gocryptotrader/database/drivers/sqlite3"
+	"github.com/vazha/gocryptotrader/database"
+	"github.com/vazha/gocryptotrader/database/drivers"
+	psqlConn "github.com/vazha/gocryptotrader/database/drivers/postgres"
+	sqliteConn "github.com/vazha/gocryptotrader/database/drivers/sqlite3"
 )
 
 var (

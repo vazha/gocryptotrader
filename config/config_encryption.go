@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/common/crypto"
-	log "github.com/thrasher-corp/gocryptotrader/logger"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/common/crypto"
+	log "github.com/vazha/gocryptotrader/logger"
 	"golang.org/x/crypto/scrypt"
 )
 
