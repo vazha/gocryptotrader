@@ -220,7 +220,7 @@ type Order struct {
 
 		// Below Used in OrderHistory
 		Condition                  string  `json:"Condition"`
-		ConditionTarget            int64  `json:"ConditionTarget"`
+		ConditionTarget            float64  `json:"ConditionTarget"`
 		TimeStamp  string  `json:"TimeStamp"`
 		Commission float64 `json:"Commission"`
 	} `json:"result"`
