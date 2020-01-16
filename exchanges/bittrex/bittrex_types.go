@@ -158,7 +158,7 @@ type UUID struct {
 }
 
 // Order holds the full order information associated with the UUID supplied
-type Order struct {
+type Order_ struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 	Result  []struct {
@@ -186,6 +186,41 @@ type Order struct {
 		Condition                  string  `json:"Condition"`
 		ConditionTarget            string  `json:"ConditionTarget"`
 		// Below Used in OrderHistory
+		TimeStamp  string  `json:"TimeStamp"`
+		Commission float64 `json:"Commission"`
+	} `json:"result"`
+}
+
+// Order holds the full order information associated with the UUID supplied
+type Order struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Result  []struct {
+		Uuid                  	   string  `json:"Uuid"`
+		OrderUUID                  string  `json:"OrderUuid"`
+		Exchange                   string  `json:"Exchange"`
+		OrderType                  string  `json:"OrderType"`
+		Quantity                   float64 `json:"Quantity"`
+		QuantityRemaining          float64 `json:"QuantityRemaining"`
+		Limit                      float64 `json:"Limit"`
+		CommissionPaid             float64 `json:"CommissionPaid"`
+		Price                      float64 `json:"Price"`
+		PricePerUnit               float64 `json:"PricePerUnit"`
+		Opened                     string  `json:"Opened"`
+		Closed                     string  `json:"Closed"`
+		CancelInitiated            bool    `json:"CancelInitiated"`
+		ImmediateOrCancel          bool    `json:"ImmediateOrCancel"`
+		IsConditional              bool    `json:"IsConditional"`
+		//Reserved                   float64 `json:"Reserved"`
+		//ReserveRemaining           float64 `json:"ReserveRemaining"`
+		//CommissionReserved         float64 `json:"CommissionReserved"`
+		//CommissionReserveRemaining float64 `json:"CommissionReserveRemaining"`
+		//IsOpen                     bool    `json:"IsOpen"`
+		//Sentinel                   string  `json:"Sentinel"`
+
+		// Below Used in OrderHistory
+		Condition                  string  `json:"Condition"`
+		ConditionTarget            string  `json:"ConditionTarget"`
 		TimeStamp  string  `json:"TimeStamp"`
 		Commission float64 `json:"Commission"`
 	} `json:"result"`
