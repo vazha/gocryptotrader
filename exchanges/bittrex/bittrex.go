@@ -236,8 +236,8 @@ func (b *Bittrex) PlaceSellLimit(currencyPair string, quantity, rate float64) (U
 
 // GetOpenOrders returns all orders that you currently have opened.
 // A specific market can be requested for example "btc-ltc"
-func (b *Bittrex) GetOpenOrders(currencyPair string) (Order, error) {
-	var orders Order
+func (b *Bittrex) GetOpenOrders(currencyPair string) (Orders, error) {
+	var orders Orders
 	values := url.Values{}
 	if !(currencyPair == "" || currencyPair == " ") {
 		values.Set("market", currencyPair)
@@ -364,10 +364,10 @@ func (b *Bittrex) GetOrder(uuid string) (Order, error) {
 	return order, nil
 }
 
-// GetOrderHistoryForCurrency is used to retrieve your order history. If currencyPair
+// GetOrderHistoryForCurrency is used to retrieve your orders history. If currencyPair
 // omitted it will return the entire order History.
-func (b *Bittrex) GetOrderHistoryForCurrency(currencyPair string) (Order, error) {
-	var orders Order
+func (b *Bittrex) GetOrderHistoryForCurrency(currencyPair string) (Orders, error) {
+	var orders Orders
 	values := url.Values{}
 
 	if !(currencyPair == "" || currencyPair == " ") {
