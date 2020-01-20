@@ -162,21 +162,21 @@ type Order struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 	Result  struct {
-		Uuid                  	   string  `json:"Uuid"`
-		OrderUUID                  string  `json:"OrderUuid"`
-		Exchange                   string  `json:"Exchange"`
-		OrderType                  string  `json:"OrderType"`
-		Quantity                   float64 `json:"Quantity"`
-		QuantityRemaining          float64 `json:"QuantityRemaining"`
-		Limit                      float64 `json:"Limit"`
-		CommissionPaid             float64 `json:"CommissionPaid"`
-		Price                      float64 `json:"Price"`
-		PricePerUnit               float64 `json:"PricePerUnit"`
-		Opened                     string  `json:"Opened"`
-		Closed                     string  `json:"Closed"`
-		CancelInitiated            bool    `json:"CancelInitiated"`
-		ImmediateOrCancel          bool    `json:"ImmediateOrCancel"`
-		IsConditional              bool    `json:"IsConditional"`
+		Uuid              string  `json:"Uuid"`
+		OrderUUID         string  `json:"OrderUuid"`
+		Exchange          string  `json:"Exchange"`
+		OrderType         string  `json:"OrderType"`
+		Quantity          float64 `json:"Quantity"`
+		QuantityRemaining float64 `json:"QuantityRemaining"`
+		Limit             float64 `json:"Limit"`
+		CommissionPaid    float64 `json:"CommissionPaid"`
+		Price             float64 `json:"Price"`
+		PricePerUnit      float64 `json:"PricePerUnit"`
+		Opened            string  `json:"Opened"`
+		Closed            string  `json:"Closed"`
+		CancelInitiated   bool    `json:"CancelInitiated"`
+		ImmediateOrCancel bool    `json:"ImmediateOrCancel"`
+		IsConditional     bool    `json:"IsConditional"`
 	} `json:"result"`
 }
 
@@ -185,25 +185,28 @@ type Orders struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 	Result  []struct {
-		Uuid                  	   string  `json:"Uuid"`
-		OrderUUID                  string  `json:"OrderUuid"`
-		Exchange                   string  `json:"Exchange"`
-		OrderType                  string  `json:"OrderType"`
-		Quantity                   float64 `json:"Quantity"`
-		QuantityRemaining          float64 `json:"QuantityRemaining"`
-		Limit                      float64 `json:"Limit"`
-		CommissionPaid             float64 `json:"CommissionPaid"`
-		Price                      float64 `json:"Price"`
-		PricePerUnit               float64 `json:"PricePerUnit"`
-		Opened                     string  `json:"Opened"`
-		Closed                     string  `json:"Closed"`
-		CancelInitiated            bool    `json:"CancelInitiated"`
-		ImmediateOrCancel          bool    `json:"ImmediateOrCancel"`
-		IsConditional              bool    `json:"IsConditional"`
-		Condition                  string  `json:"Condition"`
-		ConditionTarget            float64  `json:"ConditionTarget"`
-		TimeStamp  string  `json:"TimeStamp"`
-		Commission float64 `json:"Commission"`
+		Uuid              string  `json:"Uuid"`
+		OrderUUID         string  `json:"OrderUuid"`
+		Exchange          string  `json:"Exchange"`
+		OrderType         string  `json:"OrderType"`
+		Type              string  `json:"Type"`
+		Quantity          float64 `json:"Quantity"`
+		QuantityRemaining float64 `json:"QuantityRemaining"`
+		Limit             float64 `json:"Limit"`
+		CommissionPaid    float64 `json:"CommissionPaid"`
+		Price             float64 `json:"Price"`
+		PricePerUnit      float64 `json:"PricePerUnit"`
+		Opened            string  `json:"Opened"`
+		Closed            string  `json:"Closed"`
+		CancelInitiated   bool    `json:"CancelInitiated"`
+		ImmediateOrCancel bool    `json:"ImmediateOrCancel"`
+		IsConditional     bool    `json:"IsConditional"`
+		Condition         string  `json:"Condition"`
+		ConditionTarget   float64 `json:"ConditionTarget"`
+		TimeStamp         string  `json:"TimeStamp"`
+		Commission        float64 `json:"Commission"`
+		AccountId         string  `json:"AccountId"`
+		IsOpen            bool    `json:"IsOpen"`
 	} `json:"result"`
 }
 
