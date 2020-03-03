@@ -214,19 +214,21 @@ type Orders struct {
 type WithdrawalHistory struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
-	Result  []struct {
-		PaymentUUID    string  `json:"PaymentUuid"`
-		Currency       string  `json:"Currency"`
-		Amount         float64 `json:"Amount"`
-		Address        string  `json:"Address"`
-		Opened         string  `json:"Opened"`
-		Authorized     bool    `json:"Authorized"`
-		PendingPayment bool    `json:"PendingPayment"`
-		TxCost         float64 `json:"TxCost"`
-		TxID           string  `json:"TxId"`
-		Canceled       bool    `json:"Canceled"`
-		InvalidAddress bool    `json:"InvalidAddress"`
-	} `json:"result"`
+	Results  []Result `json:"result"`
+}
+
+type Result struct {
+	PaymentUUID    string  `json:"PaymentUuid"`
+	Currency       string  `json:"Currency"`
+	Amount         float64 `json:"Amount"`
+	Address        string  `json:"Address"`
+	Opened         string  `json:"Opened"`
+	Authorized     bool    `json:"Authorized"`
+	PendingPayment bool    `json:"PendingPayment"`
+	TxCost         float64 `json:"TxCost"`
+	TxID           string  `json:"TxId"`
+	Canceled       bool    `json:"Canceled"`
+	InvalidAddress bool    `json:"InvalidAddress"`
 }
 
 // DepositHistory holds the Deposit history data
