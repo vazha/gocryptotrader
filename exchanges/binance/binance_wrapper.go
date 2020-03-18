@@ -615,6 +615,12 @@ func (b *Binance) GetOrderHistory(req *order.GetOrdersRequest) ([]order.Detail, 
 	return orders, nil
 }
 
+// GetWithdrawalsHistory retrieves Withdrawals History information
+//
+func (b *Binance) GetWithdrawalsHistory(req *order.GetOrdersRequest) ([]order.Detail, error) {
+	return nil, nil
+}
+
 // SubscribeToWebsocketChannels appends to ChannelsToSubscribe
 // which lets websocket.manageSubscriptions handle subscribing
 func (b *Binance) SubscribeToWebsocketChannels(channels []wshandler.WebsocketChannelSubscription) error {

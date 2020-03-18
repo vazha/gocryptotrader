@@ -417,6 +417,44 @@ func (b *Binance) AllOrders(symbol, orderID, limit string) ([]QueryOrderData, er
 	return resp, nil
 }
 
+// withdrawals history
+func (b *Binance) AllWithdrawals(asset, limit string) ([]WithdrawalHistoryResponse, error) {
+	var resp []WithdrawalHistoryResponse
+
+	path := b.API.Endpoints.URL + withdrawalHistory
+
+	params := url.Values{}
+	if asset != "" {
+		params.Set("asset", strings.ToUpper(asset))
+	}
+	if err := b.SendAuthHTTPRequest(http.MethodGet, path, params, &resp); err != nil {
+		return resp, err
+	}
+
+	return resp, nil
+}
+
+// deposits history
+func (b *Binance) AllDeposits(asset, limit string) ([]DepositHistory, error) {
+	var resp DepositHistoryResponse
+
+	path := b.API.Endpoints.URL + depositHistory
+
+	params := url.Values{}
+	if asset != "" {
+		params.Set("asset", strings.ToUpper(asset))
+	}
+	if err := b.SendAuthHTTPRequest(http.MethodGet, path, params, &resp); err != nil {
+		return resp.DepositList, err
+	}
+
+	if !resp.Success {
+		return resp.DepositList, fmt.Errorf("binance depositHistory request not success")
+	}
+
+	return resp.DepositList, nil
+}
+
 // QueryOrder returns information on a past order
 func (b *Binance) QueryOrder(symbol, origClientOrderID string, orderID int64) (QueryOrderData, error) {
 	var resp QueryOrderData

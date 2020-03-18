@@ -612,3 +612,29 @@ type WithdrawResponse struct {
 	Msg     string `json:"msg"`
 	ID      string `json:"id"`
 }
+
+type WithdrawalHistoryResponse struct {
+	ID      string `json:"id"`
+	WithdrawOrderId      string `json:"withdrawOrderId"`
+	Amount      float64 `json:"amount"`
+	TransactionFee      float64 `json:"transactionFee"`
+	Address      string `json:"address"`
+	Asset      string `json:"asset"`
+	TxId      string `json:"txId"`
+	ApplyTime      int64 `json:"applyTime"`
+	Status      int64 `json:"status"`
+}
+
+type DepositHistory struct {
+	InsertTime      int64 `json:"insertTime"`
+	Amount      float64 `json:"amount"`
+	Asset      string `json:"asset"`
+	Address      string `json:"address"`
+	TxId      string `json:"txId"`
+	Status      int64 `json:"status"`
+}
+
+type DepositHistoryResponse struct {
+	DepositList []DepositHistory `json:"depositList"`
+	Success  bool `json:"success"`
+}
