@@ -613,7 +613,7 @@ type WithdrawResponse struct {
 	ID      string `json:"id"`
 }
 
-type WithdrawalHistoryResponse struct {
+type WithdrawalHistory struct {
 	ID      string `json:"id"`
 	WithdrawOrderId      string `json:"withdrawOrderId"`
 	Amount      float64 `json:"amount"`
@@ -623,6 +623,11 @@ type WithdrawalHistoryResponse struct {
 	TxId      string `json:"txId"`
 	ApplyTime      int64 `json:"applyTime"`
 	Status      int64 `json:"status"`
+}
+
+type WithdrawalHistoryResponse struct {
+	WithdrawList []WithdrawalHistory
+	Success bool   `json:"success"`
 }
 
 type DepositHistory struct {
@@ -636,5 +641,10 @@ type DepositHistory struct {
 
 type DepositHistoryResponse struct {
 	DepositList []DepositHistory `json:"depositList"`
+	Success  bool `json:"success"`
+}
+
+type AssetDetailResponse struct {
+	AssetDetail interface{} `json:"assetDetail"`
 	Success  bool `json:"success"`
 }

@@ -418,8 +418,8 @@ func (b *Binance) AllOrders(symbol, orderID, limit string) ([]QueryOrderData, er
 }
 
 // withdrawals history
-func (b *Binance) AllWithdrawals(asset, limit string) ([]WithdrawalHistoryResponse, error) {
-	var resp []WithdrawalHistoryResponse
+func (b *Binance) AllWithdrawals(asset, limit string) ([]WithdrawalHistory, error) {
+	var resp WithdrawalHistoryResponse
 
 	path := b.API.Endpoints.URL + withdrawalHistory
 
@@ -428,10 +428,10 @@ func (b *Binance) AllWithdrawals(asset, limit string) ([]WithdrawalHistoryRespon
 		params.Set("asset", strings.ToUpper(asset))
 	}
 	if err := b.SendAuthHTTPRequest(http.MethodGet, path, params, &resp); err != nil {
-		return resp, err
+		return resp.WithdrawList, err
 	}
 
-	return resp, nil
+	return resp.WithdrawList, nil
 }
 
 // deposits history
@@ -721,4 +721,12 @@ func (b *Binance) GetDepositAddressForCurrency(currency string) (string, error) 
 
 	return resp.Address,
 		b.SendAuthHTTPRequest(http.MethodGet, path, params, &resp)
+}
+
+// GetAssetDetail retrieves the wallet address for a given currency
+func (b *Binance) GetAssetDetail() (AssetDetailResponse, error) {
+	var resp AssetDetailResponse
+	path := b.API.Endpoints.URL + assetDetail
+
+	return resp, b.SendHTTPRequest(path, &resp)
 }
