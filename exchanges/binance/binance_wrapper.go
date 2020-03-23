@@ -423,7 +423,11 @@ func (b *Binance) SubmitOrder(s *order.Submit) (order.SubmitResponse, error) {
 		Price:       s.Price,
 		Quantity:    s.Amount,
 		TradeType:   requestParamsOrderType,
-		TimeInForce: BinanceRequestParamsTimeGTC,
+		//TimeInForce: BinanceRequestParamsTimeGTC,
+	}
+
+	if s.OrderType != order.Market {
+		orderRequest.TimeInForce = BinanceRequestParamsTimeGTC
 	}
 
 	response, err := b.NewOrder(&orderRequest)
