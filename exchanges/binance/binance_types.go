@@ -328,10 +328,12 @@ type CancelOrderResponse struct {
 
 // QueryOrderData holds query order data
 type QueryOrderData struct {
-	Code          int     `json:"code"`
-	Msg           string  `json:"msg"`
 	Symbol        string  `json:"symbol"`
 	OrderID       int64   `json:"orderId"`
+	CummulativeQuoteQty float64 `json:"cummulativeQuoteQty"`
+	Code          int     `json:"code"`
+	Msg           string  `json:"msg"`
+
 	ClientOrderID string  `json:"clientOrderId"`
 	Price         float64 `json:"price,string"`
 	OrigQty       float64 `json:"origQty,string"`

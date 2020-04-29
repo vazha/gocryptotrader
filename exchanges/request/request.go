@@ -294,6 +294,15 @@ func (r *Requester) DoRequest(req *http.Request, path string, body io.Reader, re
 			return err
 		}
 
+		type Response struct {
+			Code int
+			Msg string
+		}
+
+		rsp := Response{}
+
+		json.Unmarshal(contents, &rsp)
+
 		if httpRecord {
 			// This dumps http responses for future mocking implementations
 			err = mock.HTTPRecord(resp, r.Name, contents)
@@ -303,10 +312,10 @@ func (r *Requester) DoRequest(req *http.Request, path string, body io.Reader, re
 		}
 
 		if resp.StatusCode != 200 && resp.StatusCode != 201 && resp.StatusCode != 202 {
-			err = fmt.Errorf("unsuccessful HTTP status code: %d", resp.StatusCode)
+			//err = fmt.Errorf("unsuccessful HTTP status code: %d", resp.StatusCode)
+			err = fmt.Errorf("%d - %s", rsp.Code, rsp.Msg)
 			if verbose {
-				err = fmt.Errorf("%s\n%s", err.Error(),
-					fmt.Sprintf("%s exchange raw response: %s", r.Name, string(contents)))
+				err = fmt.Errorf("%s\n%s", err.Error(), fmt.Sprintf("%s exchange raw response: %s", r.Name, string(contents)))
 			}
 
 			return err
