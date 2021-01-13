@@ -1,4 +1,4 @@
-module github.com/thrasher-corp/gocryptotrader
+module github.com/vazha/gocryptotrader
 
 go 1.13
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/thrasher-corp/gocryptotrader/gctrpc"
+	"github.com/vazha/gocryptotrader/gctrpc"
 	"github.com/urfave/cli"
 )
 

@@ -3,7 +3,7 @@ package fixer
 import (
 	"testing"
 
-	"github.com/thrasher-corp/gocryptotrader/currency/forexprovider/base"
+	"github.com/vazha/gocryptotrader/currency/forexprovider/base"
 )
 
 // Please set API key and apikey subscription level for correct due diligence

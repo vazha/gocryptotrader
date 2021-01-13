@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/thrasher-corp/gocryptotrader/config"
+	"github.com/vazha/gocryptotrader/config"
 )
 
 func makeHTTPGetRequest(t *testing.T, response interface{}) *http.Response {

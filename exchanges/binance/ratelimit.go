@@ -3,7 +3,7 @@ package binance
 import (
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
+	"github.com/vazha/gocryptotrader/exchanges/request"
 	"golang.org/x/time/rate"
 )
 
