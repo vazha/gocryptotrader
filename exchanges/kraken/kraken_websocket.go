@@ -752,40 +752,39 @@ func (k *Kraken) wsProcessOrderBook(channelData *WebsocketChannelData, data map[
 	bidSnapshot, bidSnapshotExists := data["bs"].([]interface{})
 	if askSnapshotExists || bidSnapshotExists {
 		err := k.wsProcessOrderBookPartial(channelData, askSnapshot, bidSnapshot)
+		return err
+	}
+
+	askData, asksExist := data["a"].([]interface{})
+	bidData, bidsExist := data["b"].([]interface{})
+	checksum, ok := data["c"].(string)
+	if !ok {
+		return fmt.Errorf("could not process orderbook update checksum not found")
+	}
+	if asksExist || bidsExist {
+		k.wsRequestMtx.Lock()
+		defer k.wsRequestMtx.Unlock()
+		err := k.wsProcessOrderBookUpdate(channelData, askData, bidData, checksum)
 		if err != nil {
+			go func(resub *stream.ChannelSubscription) {
+				// This was locking the main websocket reader routine and a
+				// backlog occurred. So put this into it's own go routine.
+				errResub := k.Websocket.ResubscribeToChannel(resub)
+				if errResub != nil {
+					log.Errorf(log.WebsocketMgr,
+						"resubscription failure for %v: %v",
+						resub,
+						errResub)
+				}
+			}(&stream.ChannelSubscription{
+				Channel:  krakenWsOrderbook,
+				Currency: channelData.Pair,
+				Asset:    asset.Spot,
+			})
 			return err
 		}
-	} else {
-		askData, asksExist := data["a"].([]interface{})
-		bidData, bidsExist := data["b"].([]interface{})
-		checksum, ok := data["c"].(string)
-		if !ok {
-			return fmt.Errorf("could not process orderbook update checksum not found")
-		}
-		if asksExist || bidsExist {
-			k.wsRequestMtx.Lock()
-			defer k.wsRequestMtx.Unlock()
-			err := k.wsProcessOrderBookUpdate(channelData, askData, bidData, checksum)
-			if err != nil {
-				go func(resub *stream.ChannelSubscription) {
-					// This was locking the main websocket reader routine and a
-					// backlog occurred. So put this into it's own go routine.
-					errResub := k.Websocket.ResubscribeToChannel(resub)
-					if errResub != nil {
-						log.Errorf(log.WebsocketMgr,
-							"resubscription failure for %v: %v",
-							resub,
-							errResub)
-					}
-				}(&stream.ChannelSubscription{
-					Channel:  krakenWsOrderbook,
-					Currency: channelData.Pair,
-					Asset:    asset.Spot,
-				})
-				return err
-			}
-		}
 	}
+
 	return nil
 }
 
@@ -1124,12 +1123,15 @@ func (k *Kraken) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription, e
 		}
 	}
 
-	for i := range authenticatedChannels {
-	   subscriptions = append(subscriptions, stream.ChannelSubscription{
-		  Channel:  authenticatedChannels[i],
-		   Asset:    asset.Spot,
-	   })
+	if k.Websocket.CanUseAuthenticatedEndpoints() {
+		for i := range authenticatedChannels {
+			subscriptions = append(subscriptions, stream.ChannelSubscription{
+				Channel:  authenticatedChannels[i],
+				Asset:    asset.Spot,
+			})
+		}
 	}
+
 	return subscriptions, nil
 }
 
