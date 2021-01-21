@@ -672,7 +672,7 @@ func StringToOrderStatus(status string) (Status, error) {
 		strings.EqualFold(status, "pending cancel"),
 		strings.EqualFold(status, "pending cancellation"):
 		return PendingCancel, nil
-	case strings.EqualFold(status, PendingCancel.String()):
+	case strings.EqualFold(status, Pending.String()):
 		return Pending, nil
 	case strings.EqualFold(status, Rejected.String()):
 		return Rejected, nil
