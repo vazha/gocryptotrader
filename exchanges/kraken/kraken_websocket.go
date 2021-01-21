@@ -1297,6 +1297,7 @@ func (k *Kraken) wsAddOrder(request *WsAddOrderRequest) (string, error) {
 	request.RequestID = id
 	request.Event = krakenWsAddOrder
 	request.Token = authToken
+	fmt.Println("wsAddOrder", request)
 	jsonResp, err := k.Websocket.AuthConn.SendMessageReturnResponse(id, request)
 	if err != nil {
 		return "", err
@@ -1306,6 +1307,7 @@ func (k *Kraken) wsAddOrder(request *WsAddOrderRequest) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Println("wsAddOrder OK", request.RequestID, resp)
 	if resp.ErrorMessage != "" {
 		return "", fmt.Errorf(k.Name + " - " + resp.ErrorMessage)
 	}
