@@ -446,8 +446,10 @@ func (k *Kraken) wsHandleAuthDataResponse(response WebsocketDataResponse) error 
 	if chName, ok := response[1].(string); ok {
 		switch chName {
 		case krakenWsOwnTrades:
+			fmt.Println("krakenWsOwnTrades --->>>", response)
 			return k.wsProcessOwnTrades(response[0])
 		case krakenWsOpenOrders:
+			fmt.Println("krakenWsOpenOrders --->>>", response)
 			return k.wsProcessOpenOrders(response[0])
 		default:
 			return fmt.Errorf("%v Unidentified websocket data received: %+v",
