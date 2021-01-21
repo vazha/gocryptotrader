@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/database/repository/candle"
-	"github.com/thrasher-corp/gocryptotrader/database/repository/exchange"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
-	"github.com/thrasher-corp/gocryptotrader/log"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/database/repository/candle"
+	"github.com/vazha/gocryptotrader/database/repository/exchange"
+	"github.com/vazha/gocryptotrader/exchanges/asset"
+	"github.com/vazha/gocryptotrader/log"
 )
 
 // LoadFromDatabase returns Item from database seeded data

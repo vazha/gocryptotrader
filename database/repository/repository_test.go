@@ -3,7 +3,7 @@ package repository
 import (
 	"testing"
 
-	"github.com/thrasher-corp/gocryptotrader/database"
+	"github.com/vazha/gocryptotrader/database"
 )
 
 func TestGetSQLDialect(t *testing.T) {

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/portfolio/banking"
-	"github.com/thrasher-corp/gocryptotrader/portfolio/withdraw"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/portfolio/banking"
+	"github.com/vazha/gocryptotrader/portfolio/withdraw"
 )
 
 const (

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/exchanges/asset"
 )
 
 // var error definitions
@@ -225,6 +225,7 @@ const (
 	Filled              Status = "FILLED"
 	Cancelled           Status = "CANCELLED"
 	PendingCancel       Status = "PENDING_CANCEL"
+	Pending		        Status = "PENDING"
 	InsufficientBalance Status = "INSUFFICIENT_BALANCE"
 	MarketUnavailable   Status = "MARKET_UNAVAILABLE"
 	Rejected            Status = "REJECTED"

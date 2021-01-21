@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/validate"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/exchanges/validate"
 )
 
 // Validate checks the supplied data and returns whether or not it's valid
@@ -160,7 +160,7 @@ func (d *Detail) UpdateOrderFromDetail(m *Detail) {
 					d.Trades[y].Fee = m.Trades[x].Fee
 					updated = true
 				}
-				if m.Trades[y].Price != 0 && d.Trades[y].Price != m.Trades[x].Price {
+				if m.Trades[x].Price != 0 && d.Trades[y].Price != m.Trades[x].Price {
 					d.Trades[y].Price = m.Trades[x].Price
 					updated = true
 				}
@@ -176,7 +176,7 @@ func (d *Detail) UpdateOrderFromDetail(m *Detail) {
 					d.Trades[y].Description = m.Trades[x].Description
 					updated = true
 				}
-				if m.Trades[y].Amount != 0 && d.Trades[y].Amount != m.Trades[x].Amount {
+				if m.Trades[x].Amount != 0 && d.Trades[y].Amount != m.Trades[x].Amount {
 					d.Trades[y].Amount = m.Trades[x].Amount
 					updated = true
 				}
@@ -309,7 +309,7 @@ func (d *Detail) UpdateOrderFromModify(m *Modify) {
 					d.Trades[y].Fee = m.Trades[x].Fee
 					updated = true
 				}
-				if m.Trades[y].Price != 0 && d.Trades[y].Price != m.Trades[x].Price {
+				if m.Trades[x].Price != 0 && d.Trades[y].Price != m.Trades[x].Price {
 					d.Trades[y].Price = m.Trades[x].Price
 					updated = true
 				}
@@ -325,7 +325,7 @@ func (d *Detail) UpdateOrderFromModify(m *Modify) {
 					d.Trades[y].Description = m.Trades[x].Description
 					updated = true
 				}
-				if m.Trades[y].Amount != 0 && d.Trades[y].Amount != m.Trades[x].Amount {
+				if m.Trades[x].Amount != 0 && d.Trades[y].Amount != m.Trades[x].Amount {
 					d.Trades[y].Amount = m.Trades[x].Amount
 					updated = true
 				}
@@ -672,6 +672,8 @@ func StringToOrderStatus(status string) (Status, error) {
 		strings.EqualFold(status, "pending cancel"),
 		strings.EqualFold(status, "pending cancellation"):
 		return PendingCancel, nil
+	case strings.EqualFold(status, PendingCancel.String()):
+		return Pending, nil
 	case strings.EqualFold(status, Rejected.String()):
 		return Rejected, nil
 	case strings.EqualFold(status, Expired.String()):
