@@ -430,7 +430,7 @@ func (o *orderManager) Submit(newOrder *order.Submit) (*orderSubmitResponse, err
 func (o *orderManager) processOrders() {
 	authExchanges := Bot.GetAuthAPISupportedExchanges()
 	for x := range authExchanges {
-		log.Debugf(log.OrderMgr,
+		log.Infof(log.OrderMgr,
 			"Order manager: Processing orders for exchange %v.",
 			authExchanges[x])
 
