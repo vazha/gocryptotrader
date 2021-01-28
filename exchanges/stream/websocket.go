@@ -201,7 +201,7 @@ func (w *Websocket) Connect() error {
 	w.setConnectedStatus(true)
 	w.setConnectingStatus(false)
 	w.setInit(true)
-fmt.Println("NEW WS CONNECTION")
+fmt.Printf("%s, NEW WS CONNECTION - %v\n", w.exchangeName, w.GetWebsocketURL())
 	if !w.IsConnectionMonitorRunning() {
 		w.connectionMonitor()
 	}
@@ -213,7 +213,7 @@ fmt.Println("NEW WS CONNECTION")
 		return fmt.Errorf("%v Error flushing channels: %s",
 			w.exchangeName, err)
 	}
-fmt.Println("NEW WS FLUSH")
+fmt.Printf("%s, NEW WS FLUSH: %v\n", w.exchangeName, w.GetSubscriptions())
 	return nil
 }
 
