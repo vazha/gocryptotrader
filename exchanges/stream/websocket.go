@@ -510,7 +510,7 @@ func (w *Websocket) trafficMonitor() {
 				w.Wg.Done()
 				return
 			case t := <-w.TrafficAlert:
-				if w.AuthConn.GetURL() == t {
+				if w.AuthConn != nil && w.AuthConn.GetURL() == t {
 					if !trafficAuthTimer.Stop() {
 						select {
 						case <-trafficAuthTimer.C:
