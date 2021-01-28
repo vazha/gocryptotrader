@@ -492,9 +492,9 @@ func (w *Websocket) trafficMonitor() {
 
 	go func() {
 		var trafficTimer = time.NewTimer(w.trafficTimeout)
-		var trafficAuthTimer *time.Timer
-		if w.CanUseAuthenticatedEndpoints() {
-			trafficAuthTimer = time.NewTimer(w.trafficTimeout)
+		var trafficAuthTimer = time.NewTimer(w.trafficTimeout)
+		if !w.CanUseAuthenticatedEndpoints() {
+			trafficAuthTimer.Stop()
 		}
 
 		for {
