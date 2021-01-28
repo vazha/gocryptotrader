@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/thrasher-corp/gocryptotrader/database/drivers"
+	"github.com/vazha/gocryptotrader/database/drivers"
 )
 
 // Instance holds all information for a database instance

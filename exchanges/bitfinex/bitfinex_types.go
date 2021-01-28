@@ -3,7 +3,7 @@ package bitfinex
 import (
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
+	"github.com/vazha/gocryptotrader/exchanges/order"
 )
 
 // AcceptedOrderType defines the accepted market types, exchange strings denote non-contract order types.

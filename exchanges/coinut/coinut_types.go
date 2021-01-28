@@ -3,8 +3,8 @@ package coinut
 import (
 	"sync"
 
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/exchanges/order"
 )
 
 // GenericResponse is the generic response you will get from coinut

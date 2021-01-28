@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/validate"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/exchanges/validate"
 )
 
 // Validate checks the supplied data and returns whether or not it's valid

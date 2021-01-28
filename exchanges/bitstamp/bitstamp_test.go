@@ -4,15 +4,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/core"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
-	"github.com/thrasher-corp/gocryptotrader/portfolio/banking"
-	"github.com/thrasher-corp/gocryptotrader/portfolio/withdraw"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/core"
+	"github.com/vazha/gocryptotrader/currency"
+	exchange "github.com/vazha/gocryptotrader/exchanges"
+	"github.com/vazha/gocryptotrader/exchanges/asset"
+	"github.com/vazha/gocryptotrader/exchanges/kline"
+	"github.com/vazha/gocryptotrader/exchanges/order"
+	"github.com/vazha/gocryptotrader/portfolio/banking"
+	"github.com/vazha/gocryptotrader/portfolio/withdraw"
 )
 
 // Please add your private keys and customerID for better tests

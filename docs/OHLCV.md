@@ -1,12 +1,12 @@
 # GoCryptoTrader OHLCV support
 
-<img src="https://github.com/thrasher-corp/gocryptotrader/blob/master/web/src/assets/page-logo.png?raw=true" width="350px" height="350px" hspace="70">
+<img src="https://github.com/vazha/gocryptotrader/blob/master/web/src/assets/page-logo.png?raw=true" width="350px" height="350px" hspace="70">
 
 [![Build Status](https://travis-ci.org/thrasher-corp/gocryptotrader.svg?branch=master)](https://travis-ci.org/thrasher-corp/gocryptotrader)
-[![Software License](https://img.shields.io/badge/License-MIT-orange.svg?style=flat-square)](https://github.com/thrasher-corp/gocryptotrader/blob/master/LICENSE)
-[![GoDoc](https://godoc.org/github.com/thrasher-corp/gocryptotrader?status.svg)](https://godoc.org/github.com/thrasher-corp/gocryptotrader/exchanges)
+[![Software License](https://img.shields.io/badge/License-MIT-orange.svg?style=flat-square)](https://github.com/vazha/gocryptotrader/blob/master/LICENSE)
+[![GoDoc](https://godoc.org/github.com/vazha/gocryptotrader?status.svg)](https://godoc.org/github.com/vazha/gocryptotrader/exchanges)
 [![Coverage Status](http://codecov.io/github/thrasher-corp/gocryptotrader/coverage.svg?branch=master)](http://codecov.io/github/thrasher-corp/gocryptotrader?branch=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/thrasher-corp/gocryptotrader)](https://goreportcard.com/report/github.com/thrasher-corp/gocryptotrader)
+[![Go Report Card](https://goreportcard.com/badge/github.com/vazha/gocryptotrader)](https://goreportcard.com/report/github.com/vazha/gocryptotrader)
 
 This exchanges package is part of the GoCryptoTrader codebase.
 

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/exchanges/asset"
+	"github.com/vazha/gocryptotrader/exchanges/orderbook"
 )
 
 var itemArray = [][]orderbook.Item{

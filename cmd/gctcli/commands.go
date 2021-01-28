@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/gctrpc"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/gctrpc"
 	"github.com/urfave/cli"
 )
 

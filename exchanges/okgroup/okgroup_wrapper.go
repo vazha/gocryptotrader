@@ -7,17 +7,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/config"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/trade"
-	"github.com/thrasher-corp/gocryptotrader/portfolio/withdraw"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/config"
+	"github.com/vazha/gocryptotrader/currency"
+	exchange "github.com/vazha/gocryptotrader/exchanges"
+	"github.com/vazha/gocryptotrader/exchanges/account"
+	"github.com/vazha/gocryptotrader/exchanges/asset"
+	"github.com/vazha/gocryptotrader/exchanges/order"
+	"github.com/vazha/gocryptotrader/exchanges/orderbook"
+	"github.com/vazha/gocryptotrader/exchanges/stream"
+	"github.com/vazha/gocryptotrader/exchanges/trade"
+	"github.com/vazha/gocryptotrader/portfolio/withdraw"
 )
 
 // Note: GoCryptoTrader wrapper funcs currently only support SPOT trades.

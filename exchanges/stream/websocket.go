@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/thrasher-corp/gocryptotrader/config"
-	"github.com/thrasher-corp/gocryptotrader/log"
+	"github.com/vazha/gocryptotrader/config"
+	"github.com/vazha/gocryptotrader/log"
 )
 
 const (
@@ -201,7 +201,7 @@ func (w *Websocket) Connect() error {
 	w.setConnectedStatus(true)
 	w.setConnectingStatus(false)
 	w.setInit(true)
-
+fmt.Println("NEW WS CONNECTION")
 	if !w.IsConnectionMonitorRunning() {
 		w.connectionMonitor()
 	}
@@ -213,7 +213,7 @@ func (w *Websocket) Connect() error {
 		return fmt.Errorf("%v Error flushing channels: %s",
 			w.exchangeName, err)
 	}
-
+fmt.Println("NEW WS FLUSH")
 	return nil
 }
 

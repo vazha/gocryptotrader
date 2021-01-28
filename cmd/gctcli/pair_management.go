@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/gctrpc"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/gctrpc"
 	"github.com/urfave/cli"
 )
 
