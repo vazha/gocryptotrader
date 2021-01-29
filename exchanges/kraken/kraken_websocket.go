@@ -1225,6 +1225,7 @@ channels:
 			depth = krakenWsOrderbookDepth
 		}
 
+		var pairs []string
 		var id int64
 		if common.StringDataContains(authenticatedChannels, channelsToUnsubscribe[x].Channel) {
 			id = k.Websocket.AuthConn.GenerateMessageID(false)
@@ -1232,9 +1233,13 @@ channels:
 			id = k.Websocket.Conn.GenerateMessageID(false)
 		}
 
+		if channelsToUnsubscribe[x].Currency.Base.String() != "" && channelsToUnsubscribe[x].Currency.Quote.String() != ""{
+			pairs = []string{channelsToUnsubscribe[x].Currency.String()}
+		}
+
 		unsub := WebsocketSubscriptionEventRequest{
 			Event: krakenWsUnsubscribe,
-			Pairs: []string{channelsToUnsubscribe[x].Currency.String()},
+			Pairs: pairs,
 			Subscription: WebsocketSubscriptionData{
 				Name:  channelsToUnsubscribe[x].Channel,
 				Depth: depth,
