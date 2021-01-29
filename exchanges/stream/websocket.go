@@ -435,6 +435,7 @@ func (w *Websocket) FlushChannels() error {
 			if len(unsubs) != 0 {
 				err := w.UnsubscribeChannels(unsubs)
 				if err != nil {
+					fmt.Printf("%s, UnsubscribeChannels error for %+v: %s\n", w.exchangeName, unsubs, err)
 					return err
 				}
 			}
