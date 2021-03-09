@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	btseWebsocket      = "wss://ws.btse.com/spotWS"
+	cryptocomWebsocket      = "wss://stream.crypto.com/v2"
 	btseWebsocketTimer = time.Second * 57
 )
 
@@ -62,9 +62,12 @@ func (c *Cryptocom) WsAuthenticate() error {
 		[]byte(c.API.Credentials.Secret),
 	)
 	sign := crypto.HexEncodeToString(hmac)
+	params := Params{
+		Channels: []string{c.API.Credentials.Key, nonce, sign},
+	}
 	req := wsSub{
-		Operation: "authKeyExpires",
-		Arguments: []string{c.API.Credentials.Key, nonce, sign},
+		Method: "authKeyExpires",
+		Params : params,
 	}
 	return c.Websocket.Conn.SendJSONMessage(req)
 }
@@ -117,6 +120,8 @@ func (c *Cryptocom) wsHandleData(respRaw []byte) error {
 		}
 		return err
 	}
+
+	//fmt.Println("WS:", string(respRaw))
 	if result == nil {
 		return nil
 	}
@@ -148,10 +153,12 @@ func (c *Cryptocom) wsHandleData(respRaw []byte) error {
 		return nil
 	}
 
-	topic, ok := result["topic"].(string)
+	topic, ok := result["result"]
 	if !ok {
 		return errors.New(c.Name + stream.UnhandledMessage + string(respRaw))
 	}
+	fmt.Println("WS:", topic)
+
 	switch {
 	case topic == "notificationApi":
 		var notification wsNotification
@@ -255,7 +262,7 @@ func (c *Cryptocom) wsHandleData(respRaw []byte) error {
 			})
 		}
 		return trade.AddTradesToBuffer(c.Name, trades...)
-	case strings.Contains(topic, "orderBookL2Api"):
+	case strings.Contains(topic, "book."):
 		var t wsOrderBook
 		err = json.Unmarshal(respRaw, &t)
 		if err != nil {
@@ -343,7 +350,7 @@ func (c *Cryptocom) orderbookFilter(price, amount float64) bool {
 
 // GenerateDefaultSubscriptions Adds default subscriptions to websocket to be handled by ManageSubscriptions()
 func (c *Cryptocom) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription, error) {
-	var channels = []string{"orderBookL2Api:%s_0", "tradeHistory:%s"}
+	var channels = []string{"book.%s.150", "trade.%s"}
 	pairs, err := c.GetEnabledPairs(asset.Spot)
 	if err != nil {
 		return nil, err
@@ -369,10 +376,13 @@ func (c *Cryptocom) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription
 // Subscribe sends a websocket message to receive data from the channel
 func (c *Cryptocom) Subscribe(channelsToSubscribe []stream.ChannelSubscription) error {
 	var sub wsSub
-	sub.Operation = "subscribe"
+	sub.Method = "subscribe"
 	for i := range channelsToSubscribe {
-		sub.Arguments = append(sub.Arguments, channelsToSubscribe[i].Channel)
+		sub.Params.Channels = append(sub.Params.Channels, channelsToSubscribe[i].Channel)
 	}
+
+	sub.Nonce = time.Now().Unix()
+
 	err := c.Websocket.Conn.SendJSONMessage(sub)
 	if err != nil {
 		return err
@@ -384,9 +394,9 @@ func (c *Cryptocom) Subscribe(channelsToSubscribe []stream.ChannelSubscription) 
 // Unsubscribe sends a websocket message to stop receiving data from the channel
 func (c *Cryptocom) Unsubscribe(channelsToUnsubscribe []stream.ChannelSubscription) error {
 	var unSub wsSub
-	unSub.Operation = "unsubscribe"
+	unSub.Method = "unsubscribe"
 	for i := range channelsToUnsubscribe {
-		unSub.Arguments = append(unSub.Arguments,
+		unSub.Params.Channels = append(unSub.Params.Channels,
 			channelsToUnsubscribe[i].Channel)
 	}
 	err := c.Websocket.Conn.SendJSONMessage(unSub)

@@ -199,6 +199,7 @@ func (d *Dispatcher) relayer(i *sync.WaitGroup) {
 			// orderbook etc contained in a buffered channel when a routine
 			// actually is ready for a receive.
 			// TODO: Need to consider optimal timer length
+			//fmt.Println("Chemi kle 1", j.ID)
 			for i := range d.routes[j.ID] {
 				if !timeout.Stop() { // Stop timer before reset
 					// Drain channel if timer has already actuated

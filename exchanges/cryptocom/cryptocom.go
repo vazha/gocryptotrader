@@ -39,7 +39,7 @@ const (
 	btseTrades         = "public/get-trades"
 	btseTime           = "time"
 	btseOHLCV          = "ohlcv"
-	btsePrice          = "public/get-ticker"
+	cryptocomPrice          = "public/get-ticker"
 	btseFuturesFunding = "funding_history"
 
 	// Authenticated endpoints
@@ -66,31 +66,32 @@ func (c *Cryptocom) FetchFundingHistory(symbol string) (map[string][]FundingHist
 }
 
 // GetMarketSummary stores market summary data
-func (c *Cryptocom) GetMarketSummary(symbol string, spot bool) (MarketSummary, error) {
-	var m SpotMarket
+func (c *Cryptocom) GetMarketSummary(symbol string, spot bool) ([]Instrument, error) {
+	var m InstrumentsResp
 	path := btseMarketOverview
-	if symbol != "" {
-		path += "?symbol=" + url.QueryEscape(symbol)
-	}
-	return m, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, path, &m, spot, queryFunc)
+	return m.Result.Instruments, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, path, &m, spot, queryFunc)
 }
 
 // FetchOrderBook gets orderbook data for a given pair
-func (c *Cryptocom) FetchOrderBook(symbol string, group, limitBids, limitAsks int, spot bool) (*Orderbook, error) {
-	var o Orderbook
+func (c *Cryptocom) FetchOrderBook(symbol string, limit int, spot bool) (*Orderbook, error) {
+	var o OrderbookResp
 	urlValues := url.Values{}
-	urlValues.Add("symbol", symbol)
-	if limitBids > 0 {
-		urlValues.Add("limit_bids", strconv.Itoa(limitBids))
+	urlValues.Add("instrument_name", symbol)
+	if limit > 0 {
+		urlValues.Add("depth", strconv.Itoa(limit))
 	}
-	if limitAsks > 0 {
-		urlValues.Add("limit_asks", strconv.Itoa(limitAsks))
-	}
-	if group > 0 {
-		urlValues.Add("group", strconv.Itoa(group))
-	}
-	return &o, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet,
+
+	err := c.SendHTTPRequest(exchange.RestSpot, http.MethodGet,
 		common.EncodeURLValues(btseOrderbook, urlValues), &o, spot, queryFunc)
+	//fmt.Printf("UpdateOrderbook PPP: %+v\n", o.Result.Data)
+
+	ob := Orderbook{}
+	//fmt.Printf("len(o.Result.Data) PPP: %+v\n", len(o.Result.Data))
+	if len(o.Result.Data) > 0 {
+		ob = o.Result.Data[0]
+	}
+
+	return &ob, err
 }
 
 // FetchOrderBookL2 retrieve level 2 orderbook for requested symbol and depth
@@ -155,12 +156,22 @@ func (c *Cryptocom) OHLCV(symbol string, start, end time.Time, resolution int) (
 	return o, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, endpoint, &o, true, queryFunc)
 }
 
-// GetPrice get current price for requested symbol
-func (c *Cryptocom) GetPrice(symbol string) (Price, error) {
-	var p Price
-	path := btsePrice + "?symbol=" + url.QueryEscape(symbol)
-	return p, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, path, &p, true, queryFunc)
+// GetTickers get all tickers
+func (c *Cryptocom) GetTickers(symbol string) (Tickers, error) {
+	var p TickersResp
+	path := cryptocomPrice
+	if symbol != "" {
+		path += "?instrument_name=" + url.QueryEscape(symbol)
+	}
+	return p.Result, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, path, &p, true, queryFunc)
 }
+
+// GetPrice get current price for requested symbol
+//func (c *Cryptocom) GetPrice(symbol string) (Price, error) {
+//	var p Price
+//	path := cryptocomPrice + "?symbol=" + url.QueryEscape(symbol)
+//	return p, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, path, &p, true, queryFunc)
+//}
 
 // GetServerTime returns the exchanges server time
 func (c *Cryptocom) GetServerTime() (*ServerTime, error) {

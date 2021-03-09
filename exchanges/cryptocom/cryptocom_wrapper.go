@@ -67,11 +67,11 @@ func (c *Cryptocom) SetDefaults() {
 	fmt1 := currency.PairStore{
 		RequestFormat: &currency.PairFormat{
 			Uppercase: true,
-			Delimiter: "-",
+			Delimiter: "_",
 		},
 		ConfigFormat: &currency.PairFormat{
 			Uppercase: true,
-			Delimiter: "-",
+			Delimiter: "_",
 		},
 	}
 	err := c.StoreAssetPairFormat(asset.Spot, fmt1)
@@ -159,7 +159,7 @@ func (c *Cryptocom) SetDefaults() {
 	err = c.API.Endpoints.SetDefaultEndpoints(map[exchange.URL]string{
 		exchange.RestSpot:      btseAPIURL,
 		exchange.RestFutures:   btseAPIURL,
-		exchange.WebsocketSpot: btseWebsocket,
+		exchange.WebsocketSpot: cryptocomWebsocket,
 	})
 	if err != nil {
 		log.Errorln(log.ExchangeSys, err)
@@ -192,7 +192,7 @@ func (c *Cryptocom) Setup(exch *config.ExchangeConfig) error {
 		Verbose:                          exch.Verbose,
 		AuthenticatedWebsocketAPISupport: exch.API.AuthenticatedWebsocketSupport,
 		WebsocketTimeout:                 exch.WebsocketTrafficTimeout,
-		DefaultURL:                       btseWebsocket,
+		DefaultURL:                       cryptocomWebsocket,
 		ExchangeName:                     exch.Name,
 		RunningURL:                       wsRunningURL,
 		Connector:                        c.WsConnect,
@@ -207,10 +207,10 @@ func (c *Cryptocom) Setup(exch *config.ExchangeConfig) error {
 		return err
 	}
 
-	err = c.seedOrderSizeLimits()
-	if err != nil {
-		return err
-	}
+	//err = c.seedOrderSizeLimits()
+	//if err != nil {
+	//	return err
+	//}
 
 	return c.Websocket.SetupNewConnection(stream.ConnectionSetup{
 		ResponseCheckTimeout: exch.WebsocketResponseCheckTimeout,
@@ -253,10 +253,7 @@ func (c *Cryptocom) FetchTradablePairs(a asset.Item) ([]string, error) {
 	}
 
 	for x := range m {
-		if !m[x].Active {
-			continue
-		}
-		currencies = append(currencies, m[x].Symbol)
+		currencies = append(currencies, m[x].InstrumentName)
 	}
 	return currencies, nil
 }
@@ -286,25 +283,25 @@ func (c *Cryptocom) UpdateTradablePairs(forceUpdate bool) error {
 
 // UpdateTicker updates and returns the ticker for a currency pair
 func (c *Cryptocom) UpdateTicker(p currency.Pair, assetType asset.Item) (*ticker.Price, error) {
-	tickers, err := c.GetMarketSummary("", assetType == asset.Spot)
+	tickers, err := c.GetTickers("")
 	if err != nil {
 		return nil, err
 	}
-	for x := range tickers {
+	for x := range tickers.Data {
 		var pair currency.Pair
-		pair, err = currency.NewPairFromString(tickers[x].Symbol)
+		pair, err = currency.NewPairFromString(tickers.Data[x].I)
 		if err != nil {
 			return nil, err
 		}
 
 		err = ticker.ProcessTicker(&ticker.Price{
 			Pair:         pair,
-			Ask:          tickers[x].LowestAsk,
-			Bid:          tickers[x].HighestBid,
-			Low:          tickers[x].Low24Hr,
-			Last:         tickers[x].Last,
-			Volume:       tickers[x].Volume,
-			High:         tickers[x].High24Hr,
+			Ask:          tickers.Data[x].K,
+			Bid:          tickers.Data[x].B,
+			Low:          tickers.Data[x].L,
+			Last:         tickers.Data[x].A,
+			Volume:       tickers.Data[x].V,
+			High:         tickers.Data[x].H,
 			ExchangeName: c.Name,
 			AssetType:    assetType})
 		if err != nil {
@@ -345,28 +342,30 @@ func (c *Cryptocom) UpdateOrderbook(p currency.Pair, assetType asset.Item) (*ord
 	if err != nil {
 		return book, err
 	}
-	a, err := c.FetchOrderBook(fPair.String(), 0, 0, 0, assetType == asset.Spot)
+	a, err := c.FetchOrderBook(fPair.String(), 150, assetType == asset.Spot)
 	if err != nil {
 		return book, err
 	}
-
-	for x := range a.BuyQuote {
-		if c.orderbookFilter(a.BuyQuote[x].Price, a.BuyQuote[x].Size) {
+//fmt.Printf("UpdateOrderbook: %+v\n", a)
+	for x := range a.Bids {
+		if c.orderbookFilter(a.Bids[x][0], a.Bids[x][1]) {
 			continue
 		}
 		book.Bids = append(book.Bids, orderbook.Item{
-			Price:  a.BuyQuote[x].Price,
-			Amount: a.BuyQuote[x].Size})
+			Price:  a.Bids[x][0],
+			Amount: a.Bids[x][1]})
 	}
-	for x := range a.SellQuote {
-		if c.orderbookFilter(a.SellQuote[x].Price, a.SellQuote[x].Size) {
+	for x := range a.Asks {
+		if c.orderbookFilter(a.Asks[x][0], a.Asks[x][1]) {
 			continue
 		}
 		book.Asks = append(book.Asks, orderbook.Item{
-			Price:  a.SellQuote[x].Price,
-			Amount: a.SellQuote[x].Size})
+			Price:  a.Asks[x][0],
+			Amount: a.Asks[x][1]})
 	}
-	orderbook.Reverse(book.Asks) // Reverse asks for correct alignment
+	//fmt.Printf("UpdateOrderbook Asks: %+v\n", book.Asks, )
+	//fmt.Printf("UpdateOrderbook Bids: %+v\n", book.Bids)
+	//orderbook.Reverse(book.Asks) // Reverse asks for correct alignment
 	book.Pair = p
 	book.ExchangeName = c.Name
 	book.AssetType = assetType
@@ -1014,31 +1013,31 @@ func (c *Cryptocom) GetHistoricCandlesExtended(pair currency.Pair, a asset.Item,
 }
 
 func (c *Cryptocom) seedOrderSizeLimits() error {
-	pairs, err := c.GetMarketSummary("", true)
-	if err != nil {
-		return err
-	}
-	for x := range pairs {
-		tempValues := OrderSizeLimit{
-			MinOrderSize:     pairs[x].MinOrderSize,
-			MaxOrderSize:     pairs[x].MaxOrderSize,
-			MinSizeIncrement: pairs[x].MinSizeIncrement,
-		}
-		orderSizeLimitMap.Store(pairs[x].Symbol, tempValues)
-	}
-
-	pairs, err = c.GetMarketSummary("", false)
-	if err != nil {
-		return err
-	}
-	for x := range pairs {
-		tempValues := OrderSizeLimit{
-			MinOrderSize:     pairs[x].MinOrderSize,
-			MaxOrderSize:     pairs[x].MaxOrderSize,
-			MinSizeIncrement: pairs[x].MinSizeIncrement,
-		}
-		orderSizeLimitMap.Store(pairs[x].Symbol, tempValues)
-	}
+	//pairs, err := c.GetMarketSummary("", true)
+	//if err != nil {
+	//	return err
+	//}
+	//for x := range pairs {
+	//	tempValues := OrderSizeLimit{
+	//		MinOrderSize:     pairs[x].MinOrderSize,
+	//		MaxOrderSize:     pairs[x].MaxOrderSize,
+	//		MinSizeIncrement: pairs[x].MinSizeIncrement,
+	//	}
+	//	orderSizeLimitMap.Store(pairs[x].Symbol, tempValues)
+	//}
+	//
+	//pairs, err = c.GetMarketSummary("", false)
+	//if err != nil {
+	//	return err
+	//}
+	//for x := range pairs {
+	//	tempValues := OrderSizeLimit{
+	//		MinOrderSize:     pairs[x].MinOrderSize,
+	//		MaxOrderSize:     pairs[x].MaxOrderSize,
+	//		MinSizeIncrement: pairs[x].MinSizeIncrement,
+	//	}
+	//	orderSizeLimitMap.Store(pairs[x].Symbol, tempValues)
+	//}
 	return nil
 }
 

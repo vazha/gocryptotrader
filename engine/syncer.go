@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -432,7 +433,9 @@ func (e *ExchangeCurrencyPairSyncer) worker() {
 											result, err = exchanges[x].FetchTicker(c.Pair, c.AssetType)
 										}
 									} else {
+										fmt.Printf("UpdateTickerxxx\n")
 										result, err = exchanges[x].UpdateTicker(c.Pair, c.AssetType)
+										fmt.Printf("UpdateTicker %+v, %v\n", result, err)
 									}
 									printTickerSummary(result, "REST", err)
 									if err == nil {

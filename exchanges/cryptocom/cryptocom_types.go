@@ -68,6 +68,30 @@ type Price []struct {
 	Symbol     string  `json:"symbol"`
 }
 
+// Data stores last price for requested symbol
+type Data struct {
+	I  string `json:"i"`
+	B  float64 `json:"b"`
+	K  float64 `json:"k"`
+	A  float64 `json:"a"`
+	T  int64   `json:"t"`
+	V  float64 `json:"v"`
+	H  float64 `json:"h"`
+	L  float64 `json:"l"`
+	C  float64 `json:"c"`
+}
+
+// Instruments stores pair market data
+type Tickers struct {
+	Data       []Data  `json:"data"`
+}
+
+// TickersResp stores tickers market data
+type TickersResp struct {
+	Code              int64  `json:"code"`
+	Result            Tickers  `json:"result"`
+}
+
 // SpotMarket stores market data
 type SpotMarket struct {
 	Symbol            string  `json:"symbol"`
@@ -80,6 +104,28 @@ type SpotMarket struct {
 	QuoteMinPrice     float64 `json:"quote_min_price"`
 	QuoteIncrement    float64 `json:"quote_increment"`
 	Status            string  `json:"status"`
+}
+
+// Instrument stores pair market data
+type Instrument struct {
+	InstrumentName    string  `json:"instrument_name"`
+	QuoteCurrency     string  `json:"quote_currency"`
+	BaseCurrency      string  `json:"base_currency"`
+	PriceDecimals     float64 `json:"price_decimals"`
+	QuantityDecimals  float64 `json:"quantity_decimals"`
+	MarginTradingEnabled       bool `json:"margin_trading_enabled"`
+}
+
+// Instruments stores pair market data
+type Instruments struct {
+	Instruments       []Instrument  `json:"instruments"`
+}
+
+// Instruments stores pairs market data
+type InstrumentsResp struct {
+	ID                int64  `json:"id"`
+	Code              int64  `json:"code"`
+	Result            Instruments  `json:"result"`
 }
 
 // FuturesMarket stores market data
@@ -136,10 +182,22 @@ type QuoteData struct {
 
 // Orderbook stores orderbook info
 type Orderbook struct {
-	BuyQuote  []QuoteData `json:"buyQuote"`
-	SellQuote []QuoteData `json:"sellQuote"`
-	Symbol    string      `json:"symbol"`
-	Timestamp int64       `json:"timestamp"`
+	Bids  [][]float64 `json:"bids"`
+	Asks  [][]float64 `json:"asks"`
+	T     int64       `json:"t"`
+}
+
+// Book stores pair market data
+type Book struct {
+	InstrumentName string `json:"instrument_name"`
+	Depth      int64   `json:"depth"`
+	Data       []Orderbook  `json:"data"`
+}
+
+// OrderbookResp stores orderbook data
+type OrderbookResp struct {
+	Code              int64  `json:"code"`
+	Result            Book  `json:"result"`
 }
 
 // Ticker stores the ticker data
@@ -286,9 +344,28 @@ type Order struct {
 	TriggerPrice     float64 `json:"triggerPrice"`
 }
 
+type Params struct {
+	Channels []string `json:"channels"`
+}
+
 type wsSub struct {
-	Operation string   `json:"op"`
-	Arguments []string `json:"args"`
+	ID   int64  `json:"id"`
+	Method string   `json:"method"`
+	Params Params `json:"params"`
+	Nonce int64  `json:"nonce"`
+}
+
+type Result struct {
+	InstrumentName string   `json:"instrument_name"`
+	Subscription string   `json:"subscription"`
+	Channel string   `json:"channel"`
+	Data
+}
+
+type WsSubRead struct {
+	Method string   `json:"method"`
+	Code   int64  `json:"code"`
+	Result Result `json:"result"`
 }
 
 type wsQuoteData struct {
