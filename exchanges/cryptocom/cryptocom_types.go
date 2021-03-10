@@ -359,13 +359,27 @@ type Result struct {
 	InstrumentName string   `json:"instrument_name"`
 	Subscription string   `json:"subscription"`
 	Channel string   `json:"channel"`
-	Data
+	Data  []interface{} `json:"data"`
 }
 
 type WsSubRead struct {
-	Method string   `json:"method"`
+	ID     int64  `json:"id"`
+	Method string `json:"method"`
 	Code   int64  `json:"code"`
 	Result Result `json:"result"`
+}
+
+type ResultBook struct {
+	InstrumentName string   `json:"instrument_name"`
+	Subscription string   `json:"subscription"`
+	Channel string   `json:"channel"`
+	Data  []Orderbook `json:"data"`
+}
+
+type WsReadOrderBook struct {
+	Method string   `json:"method"`
+	Code   int64  `json:"code"`
+	Result ResultBook `json:"result"`
 }
 
 type wsQuoteData struct {
@@ -386,12 +400,22 @@ type wsOrderBook struct {
 }
 
 type wsTradeData struct {
-	Amount          float64 `json:"amount"`
-	Gain            int64   `json:"gain"`
-	Newest          int64   `json:"newest"`
-	Price           float64 `json:"price"`
-	ID              int64   `json:"serialId"`
-	TransactionTime int64   `json:"transactionUnixTime"`
+	Side            string  `json:"side"`
+	InstrumentName  string  `json:"instrument_name"`
+	Fee             float64 `json:"fee"`
+	TradeId         string  `json:"trade_id"`
+	CreateTime      int64   `json:"create_time,string"`
+	TradedPrice     float64 `json:"traded_price"`
+	TradedQuantity  float64 `json:"traded_quantity"`
+	FeeCurrency     string  `json:"fee_currency"`
+	OrderId     	string  `json:"order_id"`
+
+	//Amount          float64 `json:"amount"`
+	//Gain            int64   `json:"gain"`
+	//Newest          int64   `json:"newest"`
+	//Price           float64 `json:"price"`
+	//ID              int64   `json:"serialId"`
+	//TransactionTime int64   `json:"transactionUnixTime"`
 }
 
 type wsTradeHistory struct {

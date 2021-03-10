@@ -18,7 +18,6 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/trade"
-	"github.com/thrasher-corp/gocryptotrader/log"
 )
 
 const (
@@ -111,56 +110,54 @@ func (c *Cryptocom) wsReadData() {
 }
 
 func (c *Cryptocom) wsHandleData(respRaw []byte) error {
-	type Result map[string]interface{}
-	var result Result
+	//type Result map[string]interface{}
+	var result WsSubRead
 	err := json.Unmarshal(respRaw, &result)
 	if err != nil {
-		if strings.Contains(string(respRaw), "connect success") {
-			return nil
-		}
 		return err
 	}
 
 	//fmt.Println("WS:", string(respRaw))
-	if result == nil {
-		return nil
-	}
+	//if result == nil {
+	//	return nil
+	//}
 
-	if result["event"] != nil {
-		event, ok := result["event"].(string)
-		if !ok {
-			return errors.New(c.Name + stream.UnhandledMessage + string(respRaw))
-		}
-		switch event {
-		case "subscribe":
-			var subscribe WsSubscriptionAcknowledgement
-			err = json.Unmarshal(respRaw, &subscribe)
-			if err != nil {
-				return err
-			}
-			log.Infof(log.WebsocketMgr, "%v subscribed to %v", c.Name, strings.Join(subscribe.Channel, ", "))
-		case "login":
-			var login WsLoginAcknowledgement
-			err = json.Unmarshal(respRaw, &login)
-			if err != nil {
-				return err
-			}
-			c.Websocket.SetCanUseAuthenticatedEndpoints(login.Success)
-			log.Infof(log.WebsocketMgr, "%v websocket authenticated: %v", c.Name, login.Success)
-		default:
-			return errors.New(c.Name + stream.UnhandledMessage + string(respRaw))
-		}
-		return nil
-	}
+	//if result.Method != "" {
+	//	switch result.Method {
+	//	case "subscribe":
+	//		var subscribe WsSubscriptionAcknowledgement
+	//		err = json.Unmarshal(respRaw, &subscribe)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		log.Infof(log.WebsocketMgr, "%v subscribed to %v", c.Name, strings.Join(subscribe.Channel, ", "))
+	//	case "login":
+	//		var login WsLoginAcknowledgement
+	//		err = json.Unmarshal(respRaw, &login)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		c.Websocket.SetCanUseAuthenticatedEndpoints(login.Success)
+	//		log.Infof(log.WebsocketMgr, "%v websocket authenticated: %v", c.Name, login.Success)
+	//	default:
+	//		return errors.New(c.Name + stream.UnhandledMessage + string(respRaw))
+	//	}
+	//	return nil
+	//}
 
-	topic, ok := result["result"]
-	if !ok {
-		return errors.New(c.Name + stream.UnhandledMessage + string(respRaw))
-	}
-	fmt.Println("WS:", topic)
+	//topic, ok := result["result"]
+	//if !ok {
+	//	return errors.New(c.Name + stream.UnhandledMessage + string(respRaw))
+	//}
+	// fmt.Println("WS:", result)
+	// fmt.Printf("WSS: %+v\n", result)
 
 	switch {
-	case topic == "notificationApi":
+	case result.Method == "subscribe" && result.Result.Channel == "":
+		return nil
+	case result.Method == "public/heartbeat":
+		return c.SendHeartbeat(result.ID)
+	case result.Result.Channel == "notificationApi":
 		var notification wsNotification
 		err = json.Unmarshal(respRaw, &notification)
 		if err != nil {
@@ -221,27 +218,20 @@ func (c *Cryptocom) wsHandleData(respRaw []byte) error {
 				Pair:         p,
 			}
 		}
-	case strings.Contains(topic, "tradeHistory"):
+	case strings.Contains(result.Result.Channel, "trade"):
 		if !c.IsSaveTradeDataEnabled() {
 			return nil
 		}
-		var tradeHistory wsTradeHistory
-		err = json.Unmarshal(respRaw, &tradeHistory)
-		if err != nil {
-			return err
-		}
 		var trades []trade.Data
-		for x := range tradeHistory.Data {
+		for x := range result.Result.Data {
+			t := result.Result.Data[x].(wsTradeData)
 			side := order.Buy
-			if tradeHistory.Data[x].Gain == -1 {
+			if t.Side == order.Sell.String() {
 				side = order.Sell
 			}
 
 			var p currency.Pair
-			p, err = currency.NewPairFromString(strings.Replace(tradeHistory.Topic,
-				"tradeHistory:",
-				"",
-				1))
+			p, err = currency.NewPairFromString(result.Result.InstrumentName)
 			if err != nil {
 				return err
 			}
@@ -251,64 +241,47 @@ func (c *Cryptocom) wsHandleData(respRaw []byte) error {
 				return err
 			}
 			trades = append(trades, trade.Data{
-				Timestamp:    time.Unix(0, tradeHistory.Data[x].TransactionTime*int64(time.Millisecond)),
+				Timestamp:    time.Unix(0, t.CreateTime),
 				CurrencyPair: p,
 				AssetType:    a,
 				Exchange:     c.Name,
-				Price:        tradeHistory.Data[x].Price,
-				Amount:       tradeHistory.Data[x].Amount,
+				Price:        t.TradedPrice,
+				Amount:       t.TradedQuantity,
 				Side:         side,
-				TID:          strconv.FormatInt(tradeHistory.Data[x].ID, 10),
+				TID:          t.OrderId,
 			})
 		}
 		return trade.AddTradesToBuffer(c.Name, trades...)
-	case strings.Contains(topic, "book."):
-		var t wsOrderBook
-		err = json.Unmarshal(respRaw, &t)
+	case strings.Contains(result.Result.Channel, "book"):
+		var ob WsReadOrderBook
+		err = json.Unmarshal(respRaw, &ob)
 		if err != nil {
 			return err
 		}
+
 		var newOB orderbook.Base
-		var price, amount float64
-		for i := range t.Data.SellQuote {
-			p := strings.Replace(t.Data.SellQuote[i].Price, ",", "", -1)
-			price, err = strconv.ParseFloat(p, 64)
-			if err != nil {
-				return err
-			}
-			a := strings.Replace(t.Data.SellQuote[i].Size, ",", "", -1)
-			amount, err = strconv.ParseFloat(a, 64)
-			if err != nil {
-				return err
-			}
-			if c.orderbookFilter(price, amount) {
+		//ob := result.Result.Data[0].(Orderbook)
+
+		for i := range ob.Result.Data[0].Asks {
+			if c.orderbookFilter(ob.Result.Data[0].Asks[i][0], ob.Result.Data[0].Asks[i][1]) {
 				continue
 			}
 			newOB.Asks = append(newOB.Asks, orderbook.Item{
-				Price:  price,
-				Amount: amount,
+				Price:  ob.Result.Data[0].Asks[i][0],
+				Amount: ob.Result.Data[0].Asks[i][1],
 			})
 		}
-		for j := range t.Data.BuyQuote {
-			p := strings.Replace(t.Data.BuyQuote[j].Price, ",", "", -1)
-			price, err = strconv.ParseFloat(p, 64)
-			if err != nil {
-				return err
-			}
-			a := strings.Replace(t.Data.BuyQuote[j].Size, ",", "", -1)
-			amount, err = strconv.ParseFloat(a, 64)
-			if err != nil {
-				return err
-			}
-			if c.orderbookFilter(price, amount) {
+		for i := range ob.Result.Data[0].Bids {
+			if c.orderbookFilter(ob.Result.Data[0].Bids[i][0], ob.Result.Data[0].Bids[i][1]) {
 				continue
 			}
 			newOB.Bids = append(newOB.Bids, orderbook.Item{
-				Price:  price,
-				Amount: amount,
+				Price:  ob.Result.Data[0].Bids[i][0],
+				Amount: ob.Result.Data[0].Bids[i][1],
 			})
 		}
-		p, err := currency.NewPairFromString(t.Topic[strings.Index(t.Topic, ":")+1 : strings.Index(t.Topic, currency.UnderscoreDelimiter)])
+
+		p, err := currency.NewPairFromString(result.Result.InstrumentName)
 		if err != nil {
 			return err
 		}
@@ -320,7 +293,6 @@ func (c *Cryptocom) wsHandleData(respRaw []byte) error {
 		newOB.Pair = p
 		newOB.AssetType = a
 		newOB.ExchangeName = c.Name
-		orderbook.Reverse(newOB.Asks) // Reverse asks for correct alignment
 		newOB.VerificationBypass = c.OrderbookVerificationBypass
 		err = c.Websocket.Orderbook.LoadSnapshot(&newOB)
 		if err != nil {
@@ -404,5 +376,17 @@ func (c *Cryptocom) Unsubscribe(channelsToUnsubscribe []stream.ChannelSubscripti
 		return err
 	}
 	c.Websocket.RemoveSuccessfulUnsubscriptions(channelsToUnsubscribe...)
+	return nil
+}
+
+// SendHeartbeat sends response to server heartbeat
+func (c *Cryptocom) SendHeartbeat(ID int64) error {
+	var unSub wsSub
+	unSub.Method = "public/respond-heartbeat"
+	unSub.ID = ID
+	err := c.Websocket.Conn.SendJSONMessage(unSub)
+	if err != nil {
+		return err
+	}
 	return nil
 }

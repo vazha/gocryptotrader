@@ -241,6 +241,7 @@ func (b *Base) Verify() error {
 		}
 		if i != 0 {
 			if b.Asks[i].Price < b.Asks[i-1].Price {
+				//fmt.Printf("Asks: %+v\n", b.Asks)
 				return fmt.Errorf(askLoadBookFailure, b.ExchangeName, b.Pair, b.AssetType, errOutOfOrder)
 			}
 

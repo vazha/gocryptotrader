@@ -53,6 +53,7 @@ const (
 	btsePegOrder         = "order/peg"
 	btsePendingOrders    = "user/open_orders"
 	btseCancelAllAfter   = "order/cancelAllAfter"
+	cryptocomWsAuth      = "public/auth"
 )
 
 // FetchFundingHistory gets funding history
@@ -617,4 +618,18 @@ func (c *Cryptocom) calculateTradingFee(feeBuilder *exchange.FeeBuilder) float64
 
 func parseOrderTime(timeStr string) (time.Time, error) {
 	return time.Parse(common.SimpleTimeFormat, timeStr)
+}
+
+
+// GetWebsocketToken returns a websocket token
+func (c *Cryptocom) GetWebsocketToken() (string, error) {
+	req := cryptocomWsAuth
+	var response WsTokenResponse
+	if err := c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomWsAuth, true, req, nil, &c, orderFunc); err != nil {
+		return "", err
+	}
+	if len(response.Error) > 0 {
+		return "", fmt.Errorf("%s - %v", k.Name, response.Error)
+	}
+	return response.Result.Token, nil
 }
