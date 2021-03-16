@@ -56,7 +56,7 @@ func (c *Cryptocom) GetDefaultConfig() (*config.ExchangeConfig, error) {
 	return exchCfg, nil
 }
 
-// SetDefaults sets the basic defaults for BTSE
+// SetDefaults sets the basic defaults for Cryptocom
 func (c *Cryptocom) SetDefaults() {
 	c.Name = "Cryptocom"
 	c.Enabled = true
@@ -157,8 +157,8 @@ func (c *Cryptocom) SetDefaults() {
 		request.WithLimiter(SetRateLimit()))
 	c.API.Endpoints = c.NewEndpoints()
 	err = c.API.Endpoints.SetDefaultEndpoints(map[exchange.URL]string{
-		exchange.RestSpot:      btseAPIURL,
-		exchange.RestFutures:   btseAPIURL,
+		exchange.RestSpot:      cryptocomAPIURL,
+		exchange.RestFutures:   cryptocomAPIURL,
 		exchange.WebsocketSpot: cryptocomWebsocket,
 	})
 	if err != nil {
@@ -218,7 +218,7 @@ func (c *Cryptocom) Setup(exch *config.ExchangeConfig) error {
 	})
 }
 
-// Start starts the BTSE go routine
+// Start starts the Cryptocom go routine
 func (c *Cryptocom) Start(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
@@ -227,7 +227,7 @@ func (c *Cryptocom) Start(wg *sync.WaitGroup) {
 	}()
 }
 
-// Run implements the BTSE wrapper
+// Run implements the Cryptocom wrapper
 func (c *Cryptocom) Run() {
 	if c.Verbose {
 		c.PrintEnabledPairs()
@@ -377,7 +377,6 @@ func (c *Cryptocom) UpdateOrderbook(p currency.Pair, assetType asset.Item) (*ord
 }
 
 // UpdateAccountInfo retrieves balances for all enabled currencies for the
-// BTSE exchange
 func (c *Cryptocom) UpdateAccountInfo(assetType asset.Item) (account.Holdings, error) {
 	var a account.Holdings
 	balance, err := c.GetWalletInformation()
@@ -390,8 +389,8 @@ func (c *Cryptocom) UpdateAccountInfo(assetType asset.Item) (account.Holdings, e
 		currencies = append(currencies,
 			account.Balance{
 				CurrencyName: currency.NewCode(balance[b].Currency),
-				TotalValue:   balance[b].Total,
-				Hold:         balance[b].Available,
+				TotalValue:   balance[b].Balance,
+				Hold:         balance[b].Order,
 			},
 		)
 	}
@@ -505,7 +504,7 @@ func (c *Cryptocom) SubmitOrder(s *order.Submit) (order.SubmitResponse, error) {
 	}
 	inLimits := c.withinLimits(fPair, s.Amount)
 	if !inLimits {
-		return resp, errors.New("order outside of limits")
+		//return resp, errors.New("order outside of limits")
 	}
 
 	r, err := c.CreateOrder(s.ClientID, 0.0,
@@ -519,7 +518,7 @@ func (c *Cryptocom) SubmitOrder(s *order.Submit) (order.SubmitResponse, error) {
 	}
 
 	resp.IsOrderPlaced = true
-	resp.OrderID = r[0].OrderID
+	resp.OrderID = r.OrderID
 
 	if s.Type == order.Market {
 		resp.FullyMatched = true
@@ -545,7 +544,7 @@ func (c *Cryptocom) CancelOrder(o *order.Cancel) error {
 		return err
 	}
 
-	_, err = c.CancelExistingOrder(o.ID, fPair.String(), o.ClientOrderID)
+	_, err = c.CancelExistingOrder(o.ID, fPair.String())
 	if err != nil {
 		return err
 	}
@@ -559,33 +558,8 @@ func (c *Cryptocom) CancelBatchOrders(o []order.Cancel) (order.CancelBatchRespon
 }
 
 // CancelAllOrders cancels all orders associated with a currency pair
-// If product ID is sent, all orders of that specified market will be cancelled
-// If not specified, all orders of all markets will be cancelled
 func (c *Cryptocom) CancelAllOrders(orderCancellation *order.Cancel) (order.CancelAllResponse, error) {
-	if err := orderCancellation.Validate(); err != nil {
-		return order.CancelAllResponse{}, err
-	}
-
-	var resp order.CancelAllResponse
-
-	fPair, err := c.FormatExchangeCurrency(orderCancellation.Pair,
-		orderCancellation.AssetType)
-	if err != nil {
-		return resp, err
-	}
-
-	allOrders, err := c.CancelExistingOrder("", fPair.String(), "")
-	if err != nil {
-		return resp, nil
-	}
-
-	resp.Status = make(map[string]string)
-	for x := range allOrders {
-		if allOrders[x].Status == orderCancelled {
-			resp.Status[allOrders[x].OrderID] = order.Cancelled.String()
-		}
-	}
-	return resp, nil
+	return order.CancelAllResponse{}, common.ErrNotYetImplemented
 }
 
 func orderIntToType(i int) order.Type {
@@ -615,7 +589,7 @@ func (c *Cryptocom) GetOrderInfo(orderID string, pair currency.Pair, assetType a
 	}
 
 	for i := range o {
-		if o[i].OrderID != orderID {
+		if o[i].orderId != orderID {
 			continue
 		}
 
@@ -624,7 +598,7 @@ func (c *Cryptocom) GetOrderInfo(orderID string, pair currency.Pair, assetType a
 			side = order.Sell
 		}
 
-		od.Pair, err = currency.NewPairDelimiter(o[i].Symbol,
+		od.Pair, err = currency.NewPairDelimiter(o[i].InstrumentName,
 			format.Delimiter)
 		if err != nil {
 			log.Errorf(log.ExchangeSys,
@@ -633,15 +607,20 @@ func (c *Cryptocom) GetOrderInfo(orderID string, pair currency.Pair, assetType a
 				err)
 		}
 		od.Exchange = c.Name
-		od.Amount = o[i].Size
-		od.ID = o[i].OrderID
-		od.Date = time.Unix(o[i].Timestamp, 0)
+		od.Amount = o[i].Quantity
+		od.ID = o[i].orderId
+		od.Date = time.Unix(o[i].UpdateTime, 0)
 		od.Side = side
 
-		od.Type = orderIntToType(o[i].OrderType)
+		//od.Type = orderIntToType(o[i].Type)
+		if o[i].Type == "LIMIT" {
+			od.Type = order.Limit
+		} else {
+			od.Type = order.Market
+		}
 
 		od.Price = o[i].Price
-		od.Status = order.Status(o[i].OrderState)
+		od.Status = order.Status(o[i].Status)
 
 		th, err := c.TradeHistory("",
 			time.Time{}, time.Time{},
@@ -675,21 +654,7 @@ func (c *Cryptocom) GetOrderInfo(orderID string, pair currency.Pair, assetType a
 
 // GetDepositAddress returns a deposit address for a specified currency
 func (c *Cryptocom) GetDepositAddress(cryptocurrency currency.Code, accountID string) (string, error) {
-	address, err := c.GetWalletAddress(cryptocurrency.String())
-	if err != nil {
-		return "", err
-	}
-	if len(address) == 0 {
-		addressCreate, err := c.CreateWalletAddress(cryptocurrency.String())
-		if err != nil {
-			return "", err
-		}
-		if len(addressCreate) != 0 {
-			return addressCreate[0].Address, nil
-		}
-		return "", errors.New("address not found")
-	}
-	return address[0].Address, nil
+	return "", common.ErrNotYetImplemented
 }
 
 // WithdrawCryptocurrencyFunds returns a withdrawal ID when a withdrawal is
@@ -757,7 +722,7 @@ func (c *Cryptocom) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail
 				side = order.Sell
 			}
 
-			p, err := currency.NewPairDelimiter(resp[i].Symbol,
+			p, err := currency.NewPairDelimiter(resp[i].InstrumentName,
 				format.Delimiter)
 			if err != nil {
 				log.Errorf(log.ExchangeSys,
@@ -769,18 +734,18 @@ func (c *Cryptocom) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail
 			openOrder := order.Detail{
 				Pair:     p,
 				Exchange: c.Name,
-				Amount:   resp[i].Size,
-				ID:       resp[i].OrderID,
-				Date:     time.Unix(resp[i].Timestamp, 0),
+				Amount:   resp[i].Quantity,
+				ID:       resp[i].orderId,
+				Date:     time.Unix(resp[i].UpdateTime, 0),
 				Side:     side,
 				Price:    resp[i].Price,
-				Status:   order.Status(resp[i].OrderState),
+				Status:   order.Status(resp[i].Status),
 			}
 
-			if resp[i].OrderType == 77 {
-				openOrder.Type = order.Market
-			} else if resp[i].OrderType == 76 {
+			if resp[i].Type == "LIMIT" {
 				openOrder.Type = order.Limit
+			} else {
+				openOrder.Type = order.Market
 			}
 
 			fills, err := c.TradeHistory(
@@ -788,12 +753,12 @@ func (c *Cryptocom) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail
 				time.Time{}, time.Time{},
 				0, 0, 0,
 				false,
-				"", resp[i].OrderID)
+				"", resp[i].orderId)
 			if err != nil {
 				log.Errorf(log.ExchangeSys,
 					"%s: Unable to get order fills for orderID %s",
 					c.Name,
-					resp[i].OrderID)
+					resp[i].orderId)
 				continue
 			}
 
@@ -858,16 +823,16 @@ func (c *Cryptocom) GetOrderHistory(getOrdersRequest *order.GetOrdersRequest) ([
 			return nil, err
 		}
 		for y := range currentOrder {
-			if !matchType(currentOrder[y].OrderType, orderDeref.Type) {
-				continue
-			}
+			//if !matchType(currentOrder[y].OrderType, orderDeref.Type) {
+			//	continue
+			//}
 			tempOrder := order.Detail{
 				Price:  currentOrder[y].Price,
-				Amount: currentOrder[y].Size,
+				Amount: currentOrder[y].Quantity,
 				Side:   order.Side(currentOrder[y].Side),
 				Pair:   orderDeref.Pairs[x],
 			}
-			switch currentOrder[x].OrderState {
+			switch currentOrder[x].Status {
 			case "STATUS_ACTIVE":
 				tempOrder.Status = order.Active
 			case "ORDER_CANCELLED":

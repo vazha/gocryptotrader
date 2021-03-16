@@ -201,14 +201,14 @@ type OrderbookResp struct {
 }
 
 // Ticker stores the ticker data
-type Ticker struct {
-	Price  float64 `json:"price,string"`
-	Size   float64 `json:"size,string"`
-	Bid    float64 `json:"bid,string"`
-	Ask    float64 `json:"ask,string"`
-	Volume float64 `json:"volume,string"`
-	Time   string  `json:"time"`
-}
+//type Ticker struct {
+//	Price  float64 `json:"price,string"`
+//	Size   float64 `json:"size,string"`
+//	Bid    float64 `json:"bid,string"`
+//	Ask    float64 `json:"ask,string"`
+//	Volume float64 `json:"volume,string"`
+//	Time   string  `json:"time"`
+//}
 
 // MarketStatistics stores market statistics for a particular product
 type MarketStatistics struct {
@@ -231,6 +231,32 @@ type CurrencyBalance struct {
 	Currency  string  `json:"currency"`
 	Total     float64 `json:"total"`
 	Available float64 `json:"available"`
+}
+
+// CurrencyBalance stores the account info data
+type AccountSummary struct {
+	Currency  string  `json:"currency"`
+	Total     float64 `json:"total"`
+	Available float64 `json:"available"`
+}
+
+type Bals struct {
+	Balance  float64  `json:"balance"`
+	Available  float64  `json:"available"`
+	Order  float64  `json:"order"`
+	Stake  float64  `json:"stake"`
+	Currency  string  `json:"currency"`
+}
+
+type Summary struct {
+	Accounts  []Bals `json:"accounts"`
+}
+
+type GetAccountSummary struct {
+	ID     int64  `json:"id"`
+	Method string `json:"method"`
+	Code   int64  `json:"code"`
+	Result Summary `json:"result"`
 }
 
 // AccountFees stores fee for each currency pair
@@ -320,6 +346,36 @@ type OpenOrder struct {
 	Triggered                    bool    `json:"triggered"`
 }
 
+type OrderActive struct {
+	Status  string  `json:"status"`
+	Side  string  `json:"side"`
+	Price  float64  `json:"price"`
+	Quantity  float64  `json:"quantity"`
+	orderId  string  `json:"order_id"`
+	ClientOid  string  `json:"client_oid"`
+	CreateTime  int64  `json:"create_time"`
+	UpdateTime  int64  `json:"update_time"`
+	Type  string  `json:"type"`
+	InstrumentName  string  `json:"instrument_name"`
+	CumulativeQuantity  float64  `json:"cumulative_quantity"`
+	CumulativeValue  float64  `json:"cumulative_value"`
+	AvgPrice  float64  `json:"avg_price"`
+	FeeCurrency  string  `json:"fee_currency"`
+	TimeInForce  string  `json:"time_in_force"`
+}
+
+type OpenOrders struct {
+	Count  int64  `json:"count"`
+	OrderList  []OrderActive `json:"order_list"`
+}
+
+type GetOpenOrders struct {
+	ID     int64  `json:"id"`
+	Method string `json:"method"`
+	Code   int64  `json:"code"`
+	Result OpenOrders `json:"result"`
+}
+
 // CancelOrder stores slice of orders
 type CancelOrder []Order
 
@@ -344,15 +400,60 @@ type Order struct {
 	TriggerPrice     float64 `json:"triggerPrice"`
 }
 
+type CreateOrder struct {
+	OrderID  string  `json:"order_id"`
+	ClientOID string `json:"client_oid"`
+}
+
+type CreateOrderResp struct {
+	ID     int64  `json:"id"`
+	Method string `json:"method"`
+	Code   int64  `json:"code"`
+	Result CreateOrder `json:"result"`
+}
+
 type Params struct {
-	Channels []string `json:"channels"`
+	Channels []string `json:"channels,omitempty"`
+	Scope string `json:"scope,omitempty"`
+	ClientWid string `json:"client_wid,omitempty"`
+	Currency string `json:"currency,omitempty"`
+	Amount string `json:"amount,omitempty"`
+	Address string `json:"address,omitempty"`
+	StartTs string `json:"start_ts,omitempty"`
+	EndTs string `json:"end_ts,omitempty"`
+	PageSize int64 `json:"page_size,omitempty"`
+	Page int64 `json:"page,omitempty"`
+	InstrumentName string `json:"instrument_name,omitempty"`
+	Status int64 `json:"status,omitempty"`
+	Side string `json:"side,omitempty"`
+	Type string `json:"type,omitempty"`
+	Price float64 `json:"price,omitempty"`
+	Quantity float64 `json:"quantity,omitempty"`
+	ClientOid string `json:"client_oid,omitempty"`
+	TimeInForce string `json:"time_in_force,omitempty"`
+	ExecInst string `json:"exec_inst,omitempty"`
+	TriggerPrice float64 `json:"trigger_price,omitempty"`
+	OrderId string `json:"order_id,omitempty"`
+	From string `json:"from,omitempty"`
+	To string `json:"to,omitempty"`
+	Direction string `json:"direction,omitempty"`
 }
 
 type wsSub struct {
-	ID   int64  `json:"id"`
-	Method string   `json:"method"`
-	Params Params `json:"params"`
-	Nonce int64  `json:"nonce"`
+	ID   int64    `json:"id"`
+	Method string `json:"method"`
+	Params map[string]interface{} `json:"params,omitempty"`
+	Nonce int64   `json:"nonce"`
+	ApiKey string   `json:"api_key,omitempty"`
+	Sig string   `json:"sig,omitempty"`
+}
+
+type wsAuth struct {
+	ID   int64    `json:"id"`
+	Method string `json:"method"`
+	Nonce int64   `json:"nonce"`
+	ApiKey string   `json:"api_key"`
+	Sig string   `json:"sig"`
 }
 
 type Result struct {
@@ -380,6 +481,30 @@ type WsReadOrderBook struct {
 	Method string   `json:"method"`
 	Code   int64  `json:"code"`
 	Result ResultBook `json:"result"`
+}
+
+// Ticker stores Ticker info
+type Ticker struct {
+	H  float64 `json:"h"` // Price of the 24h highest trade
+	V  float64 `json:"v"` // The total 24h traded volume
+	A  float64 `json:"a"` // The price of the latest trade, null if there weren't any trades
+	L  float64 `json:"l"` // Price of the 24h lowest trade, null if there weren't any trades
+	B  float64 `json:"b"` // The current best bid price, null if there aren't any bids
+	K  float64 `json:"k"` // The current best ask price, null if there aren't any asks
+	C  float64 `json:"c"` // 24-hour price change, null if there weren't any trades
+	T  int64   `json:"t"` // update time
+}
+
+type ReadTicker struct {
+	InstrumentName string   `json:"instrument_name"`
+	Subscription string   `json:"subscription"`
+	Channel string   `json:"channel"`
+	Data  []Ticker `json:"data"`
+}
+
+type WsReadTicker struct {
+	Method string   `json:"method"`
+	Result ReadTicker `json:"result"`
 }
 
 type wsQuoteData struct {

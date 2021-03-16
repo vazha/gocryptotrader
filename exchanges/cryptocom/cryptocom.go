@@ -9,8 +9,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/thrasher-corp/gocryptotrader/common"
@@ -22,38 +22,39 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/log"
 )
 
-// BTSE is the overarching type across this package
+// Cryptocom is the overarching type across this package
 type Cryptocom struct {
 	exchange.Base
 }
 
 const (
-	btseAPIURL         = "https://api.crypto.com"
-	btseSPOTAPIPath    = "/v2/"
-	btseFuturesAPIPath = "/v2/"
+	cryptocomAPIURL         = "https://uat-api.3ona.co" //"https://api.crypto.com"
+	cryptocomSPOTAPIPath    = "/v2/"
+	cryptocomFuturesAPIPath = "/v2/"
 
 	// Public endpoints
-	btseMarketOverview = "public/get-instruments"
-	btseMarkets        = "public/get-instruments"
-	btseOrderbook      = "public/get-book"
-	btseTrades         = "public/get-trades"
-	btseTime           = "time"
-	btseOHLCV          = "ohlcv"
+	cryptocomMarketOverview = "public/get-instruments"
+	cryptocomOrderbook      = "public/get-book"
+	cryptocomTrades         = "public/get-trades"
+	cryptocomTime           = "time"
+	cryptocomOHLCV          = "ohlcv"
 	cryptocomPrice          = "public/get-ticker"
-	btseFuturesFunding = "funding_history"
+	cryptocomFuturesFunding = "funding_history"
 
 	// Authenticated endpoints
-	btseWallet           = "user/wallet"
-	btseWalletHistory    = "private/get-withdrawal-history"
-	btseWalletAddress    = "user/wallet/address"
-	btseWalletWithdrawal = "private/create-withdrawal"
-	btseExchangeHistory  = "user/trade_history"
-	btseUserFee          = "user/fees"
-	btseOrder            = "order"
-	btsePegOrder         = "order/peg"
-	btsePendingOrders    = "user/open_orders"
-	btseCancelAllAfter   = "order/cancelAllAfter"
-	cryptocomWsAuth      = "public/auth"
+	cryptocomWallet           = "private/get-account-summary"
+	cryptocomWalletHistory    = "private/get-withdrawal-history"
+	cryptocomWalletAddress    = "user/wallet/address"
+	cryptocomWalletWithdrawal = "private/create-withdrawal"
+	cryptocomExchangeHistory  = "user/trade_history"
+	cryptocomUserFee          = "user/fees"
+	cryptocomOrder            = "private/create-order"
+	cryptocomCancelOrder      = "private/cancel-order"
+	cryptocomCancelAllOrders = "private/cancel-all-orders"
+	cryptocomPegOrder         = "order/peg"
+	cryptocomPendingOrders    = "private/get-open-orders"
+	cryptocomCancelAllAfter   = "order/cancelAllAfter"
+	cryptocomWsAuth           = "public/auth"
 )
 
 // FetchFundingHistory gets funding history
@@ -63,13 +64,13 @@ func (c *Cryptocom) FetchFundingHistory(symbol string) (map[string][]FundingHist
 	if symbol != "" {
 		params.Set("symbol", symbol)
 	}
-	return resp, c.SendHTTPRequest(exchange.RestFutures, http.MethodGet, btseFuturesFunding+params.Encode(), &resp, false, queryFunc)
+	return resp, c.SendHTTPRequest(exchange.RestFutures, http.MethodGet, cryptocomFuturesFunding+params.Encode(), &resp, false, queryFunc)
 }
 
 // GetMarketSummary stores market summary data
 func (c *Cryptocom) GetMarketSummary(symbol string, spot bool) ([]Instrument, error) {
 	var m InstrumentsResp
-	path := btseMarketOverview
+	path := cryptocomMarketOverview
 	return m.Result.Instruments, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, path, &m, spot, queryFunc)
 }
 
@@ -83,7 +84,7 @@ func (c *Cryptocom) FetchOrderBook(symbol string, limit int, spot bool) (*Orderb
 	}
 
 	err := c.SendHTTPRequest(exchange.RestSpot, http.MethodGet,
-		common.EncodeURLValues(btseOrderbook, urlValues), &o, spot, queryFunc)
+		common.EncodeURLValues(cryptocomOrderbook, urlValues), &o, spot, queryFunc)
 	//fmt.Printf("UpdateOrderbook PPP: %+v\n", o.Result.Data)
 
 	ob := Orderbook{}
@@ -101,7 +102,7 @@ func (c *Cryptocom) FetchOrderBookL2(symbol string, depth int) (*Orderbook, erro
 	urlValues := url.Values{}
 	urlValues.Add("symbol", symbol)
 	urlValues.Add("depth", strconv.FormatInt(int64(depth), 10))
-	endpoint := common.EncodeURLValues(btseOrderbook+"/L2", urlValues)
+	endpoint := common.EncodeURLValues(cryptocomOrderbook+"/L2", urlValues)
 	return &o, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, endpoint, &o, true, queryFunc)
 }
 
@@ -132,7 +133,7 @@ func (c *Cryptocom) GetTrades(symbol string, start, end time.Time, beforeSerialI
 		urlValues.Add("includeOld", "true")
 	}
 	return t, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet,
-		common.EncodeURLValues(btseTrades, urlValues), &t, spot, queryFunc)
+		common.EncodeURLValues(cryptocomTrades, urlValues), &t, spot, queryFunc)
 }
 
 // OHLCV retrieve and return OHLCV candle data for requested symbol
@@ -153,7 +154,7 @@ func (c *Cryptocom) OHLCV(symbol string, start, end time.Time, resolution int) (
 		res = resolution
 	}
 	urlValues.Add("resolution", strconv.FormatInt(int64(res), 10))
-	endpoint := common.EncodeURLValues(btseOHLCV, urlValues)
+	endpoint := common.EncodeURLValues(cryptocomOHLCV, urlValues)
 	return o, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, endpoint, &o, true, queryFunc)
 }
 
@@ -177,13 +178,13 @@ func (c *Cryptocom) GetTickers(symbol string) (Tickers, error) {
 // GetServerTime returns the exchanges server time
 func (c *Cryptocom) GetServerTime() (*ServerTime, error) {
 	var s ServerTime
-	return &s, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, btseTime, &s, true, queryFunc)
+	return &s, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, cryptocomTime, &s, true, queryFunc)
 }
 
 // GetWalletInformation returns the users account balance
-func (c *Cryptocom) GetWalletInformation() ([]CurrencyBalance, error) {
-	var a []CurrencyBalance
-	return a, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodGet, btseWallet, true, nil, nil, &a, queryFunc)
+func (c *Cryptocom) GetWalletInformation() ([]Bals, error) {
+	var a GetAccountSummary
+	return a.Result.Accounts, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomWallet, true, nil, nil, &a, queryFunc)
 }
 
 // GetFeeInformation retrieve fee's (maker/taker) for requested symbol
@@ -193,7 +194,7 @@ func (c *Cryptocom) GetFeeInformation(symbol string) ([]AccountFees, error) {
 	if symbol != "" {
 		urlValues.Add("symbol", symbol)
 	}
-	return resp, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodGet, btseUserFee, true, urlValues, nil, &resp, queryFunc)
+	return resp, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodGet, cryptocomUserFee, true, urlValues, nil, &resp, queryFunc)
 }
 
 // GetWalletHistory returns the users account balance
@@ -214,46 +215,7 @@ func (c *Cryptocom) GetWalletHistory(symbol string, start, end time.Time, count 
 	if count > 0 {
 		urlValues.Add("count", strconv.Itoa(count))
 	}
-	return resp, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodGet, btseWalletHistory, true, urlValues, nil, &resp, queryFunc)
-}
-
-// GetWalletAddress returns the users account balance
-func (c *Cryptocom) GetWalletAddress(currency string) (WalletAddress, error) {
-	var resp WalletAddress
-
-	urlValues := url.Values{}
-	if currency != "" {
-		urlValues.Add("currency", currency)
-	}
-
-	return resp, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodGet, btseWalletAddress, true, urlValues, nil, &resp, queryFunc)
-}
-
-// CreateWalletAddress create new deposit address for requested currency
-func (c *Cryptocom) CreateWalletAddress(currency string) (WalletAddress, error) {
-	var resp WalletAddress
-	req := make(map[string]interface{}, 1)
-	req["currency"] = currency
-	err := c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, btseWalletAddress, true, nil, req, &resp, queryFunc)
-	if err != nil {
-		errResp := ErrorResponse{}
-		errResponseStr := strings.Split(err.Error(), "raw response: ")
-		err := json.Unmarshal([]byte(errResponseStr[1]), &errResp)
-		if err != nil {
-			return resp, err
-		}
-		if errResp.ErrorCode == 3528 {
-			walletAddress := strings.Split(errResp.Message, "BADREQUEST: ")
-			return WalletAddress{
-				{
-					Address: walletAddress[1],
-				},
-			}, nil
-		}
-		return resp, err
-	}
-
-	return resp, nil
+	return resp, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodGet, cryptocomWalletHistory, true, urlValues, nil, &resp, queryFunc)
 }
 
 // WalletWithdrawal submit request to withdraw crypto currency
@@ -264,21 +226,21 @@ func (c *Cryptocom) WalletWithdrawal(currency, address, tag, amount string) (Wit
 	req["address"] = address
 	req["tag"] = tag
 	req["amount"] = amount
-	return resp, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, btseWalletWithdrawal, true, nil, req, &resp, queryFunc)
+	return resp, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomWalletWithdrawal, true, nil, req, &resp, queryFunc)
 }
 
 // CreateOrder creates an order
-func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bool, price float64, side string, size, stealth, stopPrice float64, symbol, timeInForce string, trailValue, triggerPrice float64, txType, orderType string) ([]Order, error) {
+func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bool, price float64, side string, size, stealth, stopPrice float64, symbol, timeInForce string, trailValue, triggerPrice float64, txType, orderType string) (CreateOrder, error) {
 	req := make(map[string]interface{})
 	if clOrderID != "" {
-		req["clOrderID"] = clOrderID
+		req["client_oid"] = clOrderID
 	}
 	if deviation > 0.0 {
-		req["deviation"] = deviation
+		req["notional"] = deviation
 	}
-	if postOnly {
-		req["postOnly"] = postOnly
-	}
+	//if postOnly {
+	//	req["postOnly"] = postOnly
+	//}
 	if price > 0.0 {
 		req["price"] = price
 	}
@@ -286,121 +248,76 @@ func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bo
 		req["side"] = side
 	}
 	if size > 0.0 {
-		req["size"] = size
-	}
-	if stealth > 0.0 {
-		req["stealth"] = stealth
-	}
-	if stopPrice > 0.0 {
-		req["stopPrice"] = stopPrice
+		req["quantity"] = size
 	}
 	if symbol != "" {
-		req["symbol"] = symbol
+		req["instrument_name"] = symbol
 	}
 	if timeInForce != "" {
-		req["time_in_force"] = timeInForce
-	}
-	if trailValue > 0.0 {
-		req["trailValue"] = trailValue
+		//req["time_in_force"] = timeInForce
 	}
 	if triggerPrice > 0.0 {
-		req["triggerPrice"] = triggerPrice
-	}
-	if txType != "" {
-		req["txType"] = txType
+		req["trigger_price"] = triggerPrice
 	}
 	if orderType != "" {
 		req["type"] = orderType
 	}
 
-	var r []Order
-	return r, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, btseOrder, true, url.Values{}, req, &r, orderFunc)
+	var r CreateOrderResp
+	return r.Result, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomOrder, true, url.Values{}, req, &r, orderFunc)
 }
 
 // GetOrders returns all pending orders
-func (c *Cryptocom) GetOrders(symbol, orderID, clOrderID string) ([]OpenOrder, error) {
-	req := url.Values{}
-	if orderID != "" {
-		req.Add("orderID", orderID)
+func (c *Cryptocom) GetOrders(symbol, orderID, clOrderID string) ([]OrderActive, error) {
+	//req := url.Values{}
+	//if orderID != "" {
+	//	req.Add("orderID", orderID)
+	//}
+	//
+	//
+	//if clOrderID != "" {
+	//	req.Add("clOrderID", clOrderID)
+	//}
+	req := make(map[string]interface{})
+
+	if symbol != "" {
+		req["instrument_name"] = symbol
+		//req.Add("instrument_name", symbol)
 	}
-	req.Add("symbol", symbol)
-	if clOrderID != "" {
-		req.Add("clOrderID", clOrderID)
-	}
-	var o []OpenOrder
-	return o, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodGet, btsePendingOrders, true, req, nil, &o, orderFunc)
+	var o GetOpenOrders
+	return o.Result.OrderList, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomPendingOrders, true, nil, req, &o, orderFunc)
 }
 
 // CancelExistingOrder cancels an order
-func (c *Cryptocom) CancelExistingOrder(orderID, symbol, clOrderID string) (CancelOrder, error) {
+func (c *Cryptocom) CancelExistingOrder(orderID, symbol string) (CancelOrder, error) {
 	var co CancelOrder
-	req := url.Values{}
-	if orderID != "" {
-		req.Add("orderID", orderID)
-	}
-	req.Add("symbol", symbol)
-	if clOrderID != "" {
-		req.Add("clOrderID", clOrderID)
+	//req := url.Values{}
+	req := make(map[string]interface{})
+	if orderID == "" {
+		return nil, fmt.Errorf("orderID missed")
 	}
 
-	return co, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodDelete, btseOrder, true, req, nil, &c, orderFunc)
+	if symbol == "" {
+		return nil, fmt.Errorf("symbol missed")
+	}
+
+	req["order_id"] = orderID
+	req["instrument_name"] = symbol
+
+	return co, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomCancelOrder, true, nil, req, &c, orderFunc)
 }
 
-// CancelAllAfter cancels all orders after timeout
-func (c *Cryptocom) CancelAllAfter(timeout int) error {
+// CancelExistingOrder cancels an order
+func (c *Cryptocom) CancelAllExistingOrders(symbol string) (CancelOrder, error) {
+	var co CancelOrder
 	req := make(map[string]interface{})
-	req["timeout"] = timeout
-	return c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, btseCancelAllAfter, true, url.Values{}, req, nil, orderFunc)
-}
-
-// IndexOrderPeg create peg order that will track a certain percentage above/below the index price
-func (c *Cryptocom) IndexOrderPeg(clOrderID string, deviation float64, postOnly bool, price float64, side string, size, stealth, stopPrice float64, symbol, timeInForce string, trailValue, triggerPrice float64, txType, orderType string) ([]Order, error) {
-	var o []Order
-	req := make(map[string]interface{})
-	if clOrderID != "" {
-		req["clOrderID"] = clOrderID
-	}
-	if deviation > 0.0 {
-		req["deviation"] = deviation
-	}
-	if postOnly {
-		req["postOnly"] = postOnly
-	}
-	if price > 0.0 {
-		req["price"] = price
-	}
-	if side != "" {
-		req["side"] = side
-	}
-	if size > 0.0 {
-		req["size"] = size
-	}
-	if stealth > 0.0 {
-		req["stealth"] = stealth
-	}
-	if stopPrice > 0.0 {
-		req["stopPrice"] = stopPrice
-	}
-	if symbol != "" {
-		req["symbol"] = symbol
-	}
-	if timeInForce != "" {
-		req["time_in_force"] = timeInForce
-	}
-	if trailValue > 0.0 {
-		req["trailValue"] = trailValue
-	}
-	if triggerPrice > 0.0 {
-		req["triggerPrice"] = triggerPrice
-	}
-	if txType != "" {
-		req["txType"] = txType
-	}
-	if orderType != "" {
-		req["type"] = orderType
+	if symbol == "" {
+		return nil, fmt.Errorf("symbol missed")
 	}
 
-	return o, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, btsePegOrder, true, url.Values{}, req, nil, orderFunc)
+	req["instrument_name"] = symbol
+
+	return co, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomCancelAllOrders, true, nil, req, &c, orderFunc)
 }
 
 // TradeHistory returns previous trades on exchange
@@ -435,7 +352,7 @@ func (c *Cryptocom) TradeHistory(symbol string, start, end time.Time, beforeSeri
 	if orderID != "" {
 		urlValues.Add("orderID", orderID)
 	}
-	return resp, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodGet, btseExchangeHistory, true, urlValues, nil, &resp, queryFunc)
+	return resp, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodGet, cryptocomExchangeHistory, true, urlValues, nil, &resp, queryFunc)
 }
 
 // SendHTTPRequest sends an HTTP request to the desired endpoint
@@ -444,9 +361,9 @@ func (c *Cryptocom) SendHTTPRequest(ep exchange.URL, method, endpoint string, re
 	if err != nil {
 		return err
 	}
-	p := btseSPOTAPIPath
+	p := cryptocomSPOTAPIPath
 	if !spotEndpoint {
-		p =btseFuturesAPIPath
+		p =cryptocomFuturesAPIPath
 	}
 	return c.SendPayload(context.Background(), &request.Item{
 		Method:        method,
@@ -460,7 +377,7 @@ func (c *Cryptocom) SendHTTPRequest(ep exchange.URL, method, endpoint string, re
 }
 
 // SendAuthenticatedHTTPRequest sends an authenticated HTTP request to the desired endpoint
-func (c *Cryptocom) SendAuthenticatedHTTPRequest(ep exchange.URL, method, endpoint string, isSpot bool, values url.Values, req map[string]interface{}, result interface{}, f request.EndpointLimit) error {
+func (c *Cryptocom) SendAuthenticatedHTTPRequest(ep exchange.URL, method, endp string, isSpot bool, values url.Values, req map[string]interface{}, result interface{}, f request.EndpointLimit) error {
 	if !c.AllowAuthenticatedRequest() {
 		return fmt.Errorf(exchange.WarningAuthenticatedRequestWithoutCredentialsSet,
 			c.Name)
@@ -471,47 +388,100 @@ func (c *Cryptocom) SendAuthenticatedHTTPRequest(ep exchange.URL, method, endpoi
 		return err
 	}
 
-	// The concatenation is done this way because BTSE expect endpoint+nonce or endpoint+nonce+body
-	// when signing the data but the full path of the request  is /spot/api/v3.2/<endpoint>
-	// its messy but it works and supports futures as well
+	//fmt.Println("ePoint:", ePoint)
+	//fmt.Println("method:", method)
+	//fmt.Println("endpoint:", endp)
+	//fmt.Println("isSpot:", isSpot)
+	//fmt.Println("values:", values)
+	//fmt.Println("req:", req)
+
+	if req == nil {
+		req = make(map[string]interface{})
+	}
+
+	var paramsString string
+	keys := make([]string, 0, len(req))
+	for k := range req {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys) // sort params map by keys
+
+	for i := range keys {
+		var value string
+		switch req[keys[i]].(type) { // to string depending on value type
+		case int:
+			value = strconv.Itoa(req[keys[i]].(int))
+		case int64:
+			value = strconv.FormatInt(req[keys[i]].(int64), 10)
+		case float64:
+			value = fmt.Sprint(req[keys[i]].(float64))
+		case string:
+			value = req[keys[i]].(string)
+		}
+
+		paramsString += keys[i] + value
+	}
+
+	var endpoint string
 	host := ePoint
 	if isSpot {
-		host += btseSPOTAPIPath + endpoint
-		endpoint = btseSPOTAPIPath + endpoint
+		host += cryptocomSPOTAPIPath + endp
+		endpoint = cryptocomSPOTAPIPath + endp
 	} else {
-		host += btseFuturesAPIPath
-		endpoint += btseFuturesAPIPath
+		host += cryptocomFuturesAPIPath
+		endpoint += cryptocomFuturesAPIPath
 	}
-	var hmac []byte
+
 	var body io.Reader
-	nonce := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
+	nonce := time.Now().UnixNano()/int64(time.Millisecond)
+
 	headers := map[string]string{
-		"btse-api":   c.API.Credentials.Key,
-		"btse-nonce": nonce,
+		"Content-Type": "application/json",
 	}
-	if req != nil {
-		reqPayload, err := json.Marshal(req)
-		if err != nil {
-			return err
-		}
-		body = bytes.NewBuffer(reqPayload)
-		hmac = crypto.GetHMAC(
-			crypto.HashSHA512_384,
-			[]byte((endpoint + nonce + string(reqPayload))),
-			[]byte(c.API.Credentials.Secret),
-		)
-		headers["Content-Type"] = "application/json"
-	} else {
-		hmac = crypto.GetHMAC(
-			crypto.HashSHA512_384,
-			[]byte((endpoint + nonce)),
-			[]byte(c.API.Credentials.Secret),
-		)
-		if len(values) > 0 {
-			host += "?" + values.Encode()
-		}
+
+	var id int64 = 0
+
+	hmac := crypto.GetHMAC(
+		crypto.HashSHA256,
+		[]byte(endp + strconv.Itoa(int(id))+ c.API.Credentials.Key + paramsString + fmt.Sprint(nonce)),
+		[]byte(c.API.Credentials.Secret),
+	)
+
+	r := wsSub{
+		ID: id,
+		Nonce: nonce,
+		Params: req,
+		Method: endp,
+		ApiKey: c.API.Credentials.Key,
+		Sig: crypto.HexEncodeToString(hmac),
 	}
-	headers["btse-sign"] = crypto.HexEncodeToString(hmac)
+
+	//fmt.Println("nonce", nonce)
+	//fmt.Println("auth:", endp + strconv.Itoa(int(id))+ c.API.Credentials.Key + paramsString + fmt.Sprint(nonce))
+
+	reqPayload, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	body = bytes.NewBuffer(reqPayload)
+
+
+	//fmt.Println("reqPayload:", string(reqPayload))
+
+	//if req != nil {
+	//
+	//} else {
+	//	hmac = crypto.GetHMAC(
+	//		crypto.HashSHA256,
+	//		[]byte((endpoint + fmt.Sprint(nonce))),
+	//		[]byte(c.API.Credentials.Secret),
+	//	)
+	//	if len(values) > 0 {
+	//		host += "?" + values.Encode()
+	//	}
+	//}
+	//fmt.Println("hmac", hmac)
+	//headers["sign"] = crypto.HexEncodeToString(hmac)
 
 	if c.Verbose {
 		log.Debugf(log.ExchangeSys,
@@ -570,7 +540,7 @@ func getOfflineTradeFee(price, amount float64) float64 {
 
 // getInternationalBankDepositFee returns international deposit fee
 // Only when the initial deposit amount is less than $1000 or equivalent,
-// BTSE will charge a small fee (0.25% or $3 USD equivalent, whichever is greater).
+// Cryptocom will charge a small fee (0.25% or $3 USD equivalent, whichever is greater).
 // The small deposit fee is charged in whatever currency it comes in.
 func getInternationalBankDepositFee(amount float64) float64 {
 	var fee float64
@@ -618,18 +588,4 @@ func (c *Cryptocom) calculateTradingFee(feeBuilder *exchange.FeeBuilder) float64
 
 func parseOrderTime(timeStr string) (time.Time, error) {
 	return time.Parse(common.SimpleTimeFormat, timeStr)
-}
-
-
-// GetWebsocketToken returns a websocket token
-func (c *Cryptocom) GetWebsocketToken() (string, error) {
-	req := cryptocomWsAuth
-	var response WsTokenResponse
-	if err := c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomWsAuth, true, req, nil, &c, orderFunc); err != nil {
-		return "", err
-	}
-	if len(response.Error) > 0 {
-		return "", fmt.Errorf("%s - %v", k.Name, response.Error)
-	}
-	return response.Result.Token, nil
 }

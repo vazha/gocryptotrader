@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
 	"net/http"
 	"strconv"
 	"strings"
@@ -22,7 +23,7 @@ import (
 
 const (
 	cryptocomWebsocket      = "wss://stream.crypto.com/v2"
-	btseWebsocketTimer = time.Second * 57
+	cryptocomWebsocketTimer = time.Second * 57
 )
 
 // WsConnect connects the websocket client
@@ -37,38 +38,56 @@ func (c *Cryptocom) WsConnect() error {
 	}
 	c.Websocket.Conn.SetupPingHandler(stream.PingHandler{
 		MessageType: websocket.PingMessage,
-		Delay:       btseWebsocketTimer,
+		Delay:       cryptocomWebsocketTimer,
 	})
 
 	go c.wsReadData()
 	if c.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) {
 		err = c.WsAuthenticate()
 		if err != nil {
+			fmt.Println("Authen:", err)
 			c.Websocket.DataHandler <- err
 			c.Websocket.SetCanUseAuthenticatedEndpoints(false)
 		}
+		fmt.Println("Authen OK!")
 	}
+
+	//time.Sleep(time.Second)
+	//err = c.GetWebsocketToken()
+	//fmt.Println("GetWebsocketToken:", err)
 
 	return nil
 }
 
 // WsAuthenticate Send an authentication message to receive auth data
 func (c *Cryptocom) WsAuthenticate() error {
-	nonce := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
-	path := "/spotWS" + nonce
-	hmac := crypto.GetHMAC(crypto.HashSHA512_384,
-		[]byte((path)),
+	nonce := time.Now().UnixNano()/int64(time.Millisecond)
+	//time.Sleep(time.Second * 2)
+	//nonce := time.Now().Unix()
+	endpoint := cryptocomWsAuth
+	var id int64 = 0
+	hmac := crypto.GetHMAC(
+		crypto.HashSHA256,
+		[]byte(endpoint + strconv.Itoa(int(id)) + c.API.Credentials.Key + fmt.Sprint(nonce)),
 		[]byte(c.API.Credentials.Secret),
 	)
-	sign := crypto.HexEncodeToString(hmac)
-	params := Params{
-		Channels: []string{c.API.Credentials.Key, nonce, sign},
+
+	r := wsAuth{
+		ID: id,
+		Method: endpoint,
+		ApiKey: c.API.Credentials.Key,
+		Sig: crypto.HexEncodeToString(hmac),
+		Nonce: nonce,
 	}
-	req := wsSub{
-		Method: "authKeyExpires",
-		Params : params,
-	}
-	return c.Websocket.Conn.SendJSONMessage(req)
+
+	//r := wsAuth{
+	//	ID: 11,
+	//	Method: "public/auth",
+	//	ApiKey: c.API.Credentials.Key,
+	//	Sig: crypto.HexEncodeToString(hmac),
+	//	Nonce: 1587846358253,
+	//}
+	return c.Websocket.Conn.SendJSONMessage(r)
 }
 
 func stringToOrderStatus(status string) (order.Status, error) {
@@ -252,6 +271,47 @@ func (c *Cryptocom) wsHandleData(respRaw []byte) error {
 			})
 		}
 		return trade.AddTradesToBuffer(c.Name, trades...)
+	case strings.Contains(result.Result.Channel, "ticker"):
+		var t WsReadTicker
+		err := json.Unmarshal(respRaw, &t)
+		if err != nil {
+			return fmt.Errorf("%v - Could not convert to a TickerStream structure %s",
+				c.Name,
+				err.Error())
+		}
+		pairs, err := c.GetEnabledPairs(asset.Spot)
+		if err != nil {
+			return err
+		}
+
+		format, err := c.GetPairFormat(asset.Spot, true)
+		if err != nil {
+			return err
+		}
+
+		pair, err := currency.NewPairFromFormattedPairs(t.Result.InstrumentName, pairs, format)
+		if err != nil {
+			return err
+		}
+
+		time := time.Unix(t.Result.Data[0].T, 0)
+
+		// fmt.Println("WS Ticker:", t.Result.Data[0], pair)
+		c.Websocket.DataHandler <- &ticker.Price{
+			ExchangeName: c.Name,
+			//Open:         t.OpenPrice,
+			//Close:        t.ClosePrice,
+			Volume:       t.Result.Data[0].V,
+			//QuoteVolume:  t.TotalTradedQuoteVolume,
+			High:         t.Result.Data[0].H,
+			Low:          t.Result.Data[0].L,
+			Bid:          t.Result.Data[0].B,
+			Ask:          t.Result.Data[0].K,
+			Last:         t.Result.Data[0].A,
+			LastUpdated:  time,
+			AssetType:    asset.Spot,
+			Pair:         pair,
+		}
 	case strings.Contains(result.Result.Channel, "book"):
 		var ob WsReadOrderBook
 		err = json.Unmarshal(respRaw, &ob)
@@ -322,7 +382,7 @@ func (c *Cryptocom) orderbookFilter(price, amount float64) bool {
 
 // GenerateDefaultSubscriptions Adds default subscriptions to websocket to be handled by ManageSubscriptions()
 func (c *Cryptocom) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription, error) {
-	var channels = []string{"book.%s.150", "trade.%s"}
+	var channels = []string{"book.%s.150", "trade.%s", "ticker.%s"}
 	pairs, err := c.GetEnabledPairs(asset.Spot)
 	if err != nil {
 		return nil, err
@@ -349,9 +409,16 @@ func (c *Cryptocom) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription
 func (c *Cryptocom) Subscribe(channelsToSubscribe []stream.ChannelSubscription) error {
 	var sub wsSub
 	sub.Method = "subscribe"
+	var ch []string
 	for i := range channelsToSubscribe {
-		sub.Params.Channels = append(sub.Params.Channels, channelsToSubscribe[i].Channel)
+		//sub.Params.Channels = append(sub.Params.Channels, channelsToSubscribe[i].Channel)
+		ch = append(ch, channelsToSubscribe[i].Channel)
 	}
+
+	p := map[string]interface{}{
+		"channels": ch,
+	}
+	sub.Params = p
 
 	sub.Nonce = time.Now().Unix()
 
@@ -367,10 +434,22 @@ func (c *Cryptocom) Subscribe(channelsToSubscribe []stream.ChannelSubscription) 
 func (c *Cryptocom) Unsubscribe(channelsToUnsubscribe []stream.ChannelSubscription) error {
 	var unSub wsSub
 	unSub.Method = "unsubscribe"
+
+	var ch []string
 	for i := range channelsToUnsubscribe {
-		unSub.Params.Channels = append(unSub.Params.Channels,
-			channelsToUnsubscribe[i].Channel)
+		//sub.Params.Channels = append(sub.Params.Channels, channelsToSubscribe[i].Channel)
+		ch = append(ch, channelsToUnsubscribe[i].Channel)
 	}
+
+	//for i := range channelsToUnsubscribe {
+	//	unSub.Params.Channels = append(unSub.Params.Channels,
+	//		channelsToUnsubscribe[i].Channel)
+	//}
+	p := map[string]interface{}{
+		"channels": ch,
+	}
+	unSub.Params = p
+
 	err := c.Websocket.Conn.SendJSONMessage(unSub)
 	if err != nil {
 		return err
