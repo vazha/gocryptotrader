@@ -148,7 +148,7 @@ func (c *Cryptocom) wsReadData2() {
 		if resp.Raw == nil {
 			return
 		}
-		err := c.wsHandleData(resp.Raw)
+		err := c.wsHandleData(resp)
 		if err != nil {
 			c.Websocket.DataHandler <- err
 		}
@@ -165,7 +165,7 @@ func (c *Cryptocom) wsReadData(comms chan stream.Response) {
 		case <-c.Websocket.ShutdownC:
 			return
 		case resp := <-comms:
-			err := c.wsHandleData(resp.Raw)
+			err := c.wsHandleData(resp)
 			if err != nil {
 				c.Websocket.DataHandler <- fmt.Errorf("%s - unhandled websocket data: %v",
 					c.Name,
@@ -175,7 +175,8 @@ func (c *Cryptocom) wsReadData(comms chan stream.Response) {
 	}
 }
 
-func (c *Cryptocom) wsHandleData(respRaw []byte) error {
+func (c *Cryptocom) wsHandleData(resp stream.Response) error {
+	respRaw := resp.Raw
 	//type Result map[string]interface{}
 	var result WsSubRead
 	err := json.Unmarshal(respRaw, &result)
@@ -220,12 +221,11 @@ func (c *Cryptocom) wsHandleData(respRaw []byte) error {
 
 	switch {
 	case result.Method == "public/auth": //"public/auth"
-	fmt.Println("BOOM public/auth")
+	fmt.Println("public/auth ACCEPTED")
 	case result.Method == "subscribe" && result.Result.Channel == "":
 		return nil
 	case result.Method == "public/heartbeat":
-		fmt.Println("heartbeat:", result)
-		return c.SendHeartbeat(result.ID)
+		return c.SendHeartbeat(result.ID, resp.Auth)
 	case result.Result.Channel == "notificationApi":
 		var notification wsNotification
 		err = json.Unmarshal(respRaw, &notification)
@@ -509,13 +509,17 @@ func (c *Cryptocom) Unsubscribe(channelsToUnsubscribe []stream.ChannelSubscripti
 }
 
 // SendHeartbeat sends response to server heartbeat
-func (c *Cryptocom) SendHeartbeat(ID int64) error {
+func (c *Cryptocom) SendHeartbeat(ID int64, auth bool) error {
 	var unSub wsSub
 	unSub.Method = "public/respond-heartbeat"
 	unSub.ID = ID
-	err := c.Websocket.Conn.SendJSONMessage(unSub)
-	if err != nil {
-		return err
+
+	var err error
+	if auth {
+		err = c.Websocket.AuthConn.SendJSONMessage(unSub)
+	}else{
+		err = c.Websocket.Conn.SendJSONMessage(unSub)
 	}
-	return nil
+
+	return err
 }

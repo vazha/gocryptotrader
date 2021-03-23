@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -216,6 +217,11 @@ func (w *WebsocketConnection) ReadMessage() Response {
 	default: // causes contention, just bypass if there is no receiver.
 	}
 
+	var auth bool
+	if strings.Contains(w.URL, "auth") || strings.Contains(w.URL, "v2/user") {
+		auth = true
+	}
+
 	var standardMessage []byte
 	switch mType {
 	case websocket.TextMessage:
@@ -236,7 +242,7 @@ func (w *WebsocketConnection) ReadMessage() Response {
 			w.ExchangeName,
 			string(standardMessage))
 	}
-	return Response{Raw: standardMessage, Type: mType}
+	return Response{Raw: standardMessage, Type: mType, Auth: auth}
 }
 
 // parseBinaryResponse parses a websocket binary response into a usable byte array

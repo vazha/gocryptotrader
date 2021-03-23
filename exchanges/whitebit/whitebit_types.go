@@ -616,10 +616,10 @@ const (
 	wsFundingOrderUpdateRequest            = wsFundingOrderUpdate + wsRequest
 	wsFundingOrderCancelRequest            = wsFundingOrderCancel + wsRequest
 	wsCancelMultipleOrders                 = "oc_multi"
-	wsBook                                 = "book"
+	wsBook                                 = "depth_subscribe"
 	wsCandles                              = "candles"
-	wsTicker                               = "ticker"
-	wsTrades                               = "trades"
+	wsTicker                               = "lastprice_subscribe"
+	wsTrades                               = "trades_subscribe"
 	wsError                                = "error"
 )
 
@@ -784,4 +784,11 @@ type WsCancelOfferRequest struct {
 // WsCancelAllOrdersRequest cancel all orders request
 type WsCancelAllOrdersRequest struct {
 	All int64 `json:"all"`
+}
+
+// WsRequest represent general struct or ws request
+type WsRequest struct {
+	ID      int64  `json:"id"`
+	Method  string  `json:"method"`
+	Params  []interface{} `json:"params"`
 }

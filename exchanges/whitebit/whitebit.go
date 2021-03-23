@@ -27,9 +27,9 @@ import (
 
 const (
 	whitebitWSAPIURLBase = "wss://api.whitebit.com/ws"
-	whitebitAPIURLBase = "https://api.bitfinex.com"
+	whitebitAPIURLBase = "https://whitebit.com"
 	// Version 1 API endpoints
-	whitebitAPIVersion         = "/v1/"
+	whitebitAPIVersion         = "/v4/"
 	whitebitStats              = "api/v4/public/time"
 	whitebitAccountInfo        = "account_infos"
 	whitebitAccountFees        = "account_fees"
@@ -83,9 +83,7 @@ const (
 	whitebitDepositMethod   = "main-account/address"
 	whitebitMarginPairs     = "conf/pub:list:pair:margin"
 
-	// Bitfinex platform status values
-	// When the platform is marked in maintenance mode bots should stop trading
-	// activity. Cancelling orders will be possible.
+
 	bitfinexMaintenanceMode = 0
 	bitfinexOperativeMode   = 1
 

@@ -29,6 +29,7 @@ type Connection interface {
 type Response struct {
 	Type int
 	Raw  []byte
+	Auth bool
 }
 
 // ChannelSubscription container for streaming subscriptions

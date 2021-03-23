@@ -490,6 +490,7 @@ func (w *Websocket) trafficMonitor() {
 	w.setTrafficMonitorRunning(true)
 	w.Wg.Add(1)
 
+	w.trafficTimeout = time.Second * 60 // delete
 	go func() {
 		var trafficTimer = time.NewTimer(w.trafficTimeout)
 		var trafficAuthTimer = time.NewTimer(w.trafficTimeout)
@@ -510,6 +511,7 @@ func (w *Websocket) trafficMonitor() {
 				w.Wg.Done()
 				return
 			case t := <-w.TrafficAlert:
+				//fmt.Println("TrafficAlert", t)
 				switch {
 				case w.AuthConn != nil && w.AuthConn.GetURL() == t:
 					if !trafficAuthTimer.Stop() {

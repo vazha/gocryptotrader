@@ -796,7 +796,7 @@ func (c *Cryptocom) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail
 	}
 
 	order.FilterOrdersByType(&orders, req.Type)
-	order.FilterOrdersByTickRange(&orders, req.StartTicks, req.EndTicks)
+	//order.FilterOrdersByTickRange(&orders, req.StartTicks, req.EndTicks)
 	order.FilterOrdersBySide(&orders, req.Side)
 	return orders, nil
 }

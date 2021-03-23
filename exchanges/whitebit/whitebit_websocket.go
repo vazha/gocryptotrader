@@ -116,11 +116,15 @@ func (b *Whitebit) wsHandleData(respRaw []byte) error {
 	if err != nil {
 		return err
 	}
+
+	//fmt.Println("wsHandleData:", result)
+
 	switch d := result.(type) {
 	case map[string]interface{}:
-		event := d["event"]
+		event := d["method"]
 		switch event {
-		case "subscribed":
+		case "depth_update":
+			fmt.Println("depth_update!")
 			if symbol, ok := d["symbol"].(string); ok {
 				b.WsAddSubscriptionChannel(int(d["chanId"].(float64)),
 					d["channel"].(string),
@@ -1056,9 +1060,8 @@ func (b *Whitebit) WsUpdateOrderbook(p currency.Pair, assetType asset.Item, book
 func (b *Whitebit) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription, error) {
 	var channels = []string{
 		wsBook,
-		wsTrades,
-		wsTicker,
-		wsCandles,
+		//wsTrades,
+		//wsTicker,
 	}
 
 	var subscriptions []stream.ChannelSubscription
@@ -1069,31 +1072,38 @@ func (b *Whitebit) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription,
 			return nil, err
 		}
 
+		allPairs := make(map[string]interface{})
 		for j := range channels {
 			for k := range enabledPairs {
 				params := make(map[string]interface{})
 				if channels[j] == wsBook {
-					params["prec"] = "R0"
-					params["len"] = "100"
+					params["pair"] = currency.NewPairWithDelimiter(enabledPairs[k].Base.String(), enabledPairs[k].Quote.String(), "_")
+					params["limit"] = 100
+					params["interval"] = "0"
+					params["flag"] = true
 				}
 
-				if channels[j] == wsCandles {
-					// TODO: Add ability to select timescale && funding period
-					var fundingPeriod string
-					prefix := "t"
-					if assets[i] == asset.MarginFunding {
-						prefix = "f"
-						fundingPeriod = ":p30"
-					}
-					params["key"] = "trade:1m:" + prefix + enabledPairs[k].String() + fundingPeriod
-				} else {
-					params["symbol"] = enabledPairs[k].String()
+				if channels[j] == wsTrades {
+					//p, err := currency.NewPairDelimiter(enabledPairs[k], "-")
+					p :=currency.NewPairWithDelimiter(enabledPairs[k].Base.String(), enabledPairs[k].Quote.String(), "-")
+					fmt.Println("P:", p)
+					allPairs[enabledPairs[k].String()] = p //enabledPairs[k].String()
+					continue
 				}
 
 				subscriptions = append(subscriptions, stream.ChannelSubscription{
 					Channel:  channels[j],
 					Currency: enabledPairs[k],
 					Params:   params,
+					Asset:    assets[i],
+				})
+			}
+
+			if channels[j] == wsTrades {
+				subscriptions = append(subscriptions, stream.ChannelSubscription{
+					Channel:  channels[j],
+					Currency: currency.NewPair(currency.BTC, currency.USDT), // dummy pair
+					Params:   allPairs,
 					Asset:    assets[i],
 				})
 			}
@@ -1105,24 +1115,30 @@ func (b *Whitebit) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription,
 
 // Subscribe sends a websocket message to receive data from the channel
 func (b *Whitebit) Subscribe(channelsToSubscribe []stream.ChannelSubscription) error {
+	//fmt.Println("channelsToSubscribe:", channelsToSubscribe)
 	var errs common.Errors
-	checksum := make(map[string]interface{})
-	checksum["event"] = "conf"
-	checksum["flags"] = bitfinexChecksumFlag + bitfinexWsSequenceFlag
-	err := b.Websocket.Conn.SendJSONMessage(checksum)
-	if err != nil {
-		return err
-	}
 
 	for i := range channelsToSubscribe {
-		req := make(map[string]interface{})
-		req["event"] = "subscribe"
-		req["channel"] = channelsToSubscribe[i].Channel
+		var prm []interface{}
 
-		for k, v := range channelsToSubscribe[i].Params {
-			req[k] = v
+		//for _, v := range channelsToSubscribe[i].Params {
+		//	prm = append(prm, channelsToSubscribe[i].Params["pair"])
+		//}
+
+		prm = append(prm,
+			channelsToSubscribe[i].Params["pair"],
+			channelsToSubscribe[i].Params["limit"],
+			channelsToSubscribe[i].Params["interval"],
+			channelsToSubscribe[i].Params["flag"],
+			)
+
+		req := WsRequest{
+			ID: time.Now().UnixNano() / 1000,
+			Method: channelsToSubscribe[i].Channel,
+			Params: prm,
 		}
 
+		fmt.Printf("channelsToSubscribe: %+v\n", req)
 		err := b.Websocket.Conn.SendJSONMessage(req)
 		if err != nil {
 			errs = append(errs, err)
