@@ -2,6 +2,8 @@ package engine
 
 import (
 	"errors"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/cryptocom"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/whitebit"
 	"strings"
 	"sync"
 
@@ -218,6 +220,10 @@ func (bot *Engine) LoadExchange(name string, useWG bool, wg *sync.WaitGroup) err
 		exch = new(poloniex.Poloniex)
 	case "yobit":
 		exch = new(yobit.Yobit)
+	case "whitebit":
+		exch = new(whitebit.Whitebit)
+	case "cryptocom":
+		exch = new(cryptocom.Cryptocom)
 	case "zb":
 		exch = new(zb.ZB)
 	default:

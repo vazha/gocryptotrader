@@ -42,4 +42,6 @@ var Exchanges = []string{
 	"poloniex",
 	"yobit",
 	"zb",
+	"whitebit",
+	"cryptocom",
 }
