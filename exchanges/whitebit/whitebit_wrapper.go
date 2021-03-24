@@ -208,7 +208,7 @@ func (b *Whitebit) Setup(exch *config.ExchangeConfig) error {
 		Features:                         &b.Features.Supports.WebsocketCapabilities,
 		OrderbookBufferLimit:             exch.OrderbookConfig.WebsocketBufferLimit,
 		BufferEnabled:                    exch.OrderbookConfig.WebsocketBufferEnabled,
-		UpdateEntriesByID:                true,
+		UpdateEntriesByID:                false,
 	})
 	if err != nil {
 		return err

@@ -574,7 +574,7 @@ type WebsocketHandshake struct {
 }
 
 const (
-	authenticatedWhitebitWebsocketEndpoint = "wss://api.whitebit.com/ws"
+	authenticatedWhitebitWebsocketEndpoint = "wss://api-auth.whitebit.com/ws"
 	publicWhitebitWebsocketEndpoint        = "wss://api.whitebit.com/ws"
 	pong                                   = "pong"
 	wsHeartbeat                            = "hb"
@@ -791,4 +791,16 @@ type WsRequest struct {
 	ID      int64  `json:"id"`
 	Method  string  `json:"method"`
 	Params  []interface{} `json:"params"`
+}
+
+// WsRequest represent general struct or ws request
+type WsBookRequest struct {
+	ID      int64  `json:"id"`
+	Method  string  `json:"method"`
+	Params  map[string][][]float64 `json:"params"`
+}
+
+// WsTokenResponse holds the WS auth token
+type WsTokenResponse struct {
+	WebsocketToken  string `json:"websocket_token"`
 }

@@ -89,6 +89,7 @@ const (
 
 	bitfinexChecksumFlag   = 131072
 	bitfinexWsSequenceFlag = 65536
+	witebitGetWsToken = "profile/websocket_token"
 )
 
 // Bitfinex is the overarching type across the bitfinex package
@@ -524,6 +525,13 @@ func (b *Whitebit) GetTrades(currencyPair string, limit, timestampStart, timesta
 // Values can contain limit amounts for both the asks and bids - Example
 // "len" = 100
 func (b *Whitebit) GetOrderbook(symbol, precision string, limit int64) (Orderbook, error) {
+	t, err := b.GetWebsocketToken()
+	if err != nil {
+		fmt.Println("TOKEN FAIL:", err)
+		return Orderbook{}, err
+	}
+	fmt.Println("TOKEN:", t)
+
 	var u = url.Values{}
 	if limit > 0 {
 		u.Set("len", strconv.FormatInt(limit, 10))
@@ -537,7 +545,7 @@ func (b *Whitebit) GetOrderbook(symbol, precision string, limit int64) (Orderboo
 	}
 
 	var response OrderBook
-	err := b.SendHTTPRequest(exchange.RestSpot, path, &response, orderbookFunction)
+	err = b.SendHTTPRequest(exchange.RestSpot, path, &response, orderbookFunction)
 	if err != nil {
 		return Orderbook{}, err
 	}
@@ -1629,4 +1637,15 @@ func (b *Whitebit) PopulateAcceptableMethods() error {
 		}
 	}
 	return nil
+}
+
+// GetWebsocketToken returns a websocket token
+func (b *Whitebit) GetWebsocketToken() (string, error) {
+	var response WsTokenResponse
+	var err error
+	if err = b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, witebitGetWsToken, nil, &response, orderMulti); err != nil {
+		return "", err
+	}
+
+	return response.WebsocketToken, nil
 }
