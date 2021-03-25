@@ -14,7 +14,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/common/crypto"
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
@@ -33,6 +32,8 @@ type checksum struct {
 	Token    int
 	Sequence int64
 }
+
+var authToken string
 
 // checksumStore quick global for now
 var checksumStore = make(map[int]*checksum)
@@ -55,24 +56,25 @@ func (b *Whitebit) WsConnect() error {
 	go b.wsReadData(b.Websocket.Conn)
 
 	fmt.Println("NEW:", b.Websocket.AuthConn.GetURL())
-	if b.Websocket.CanUseAuthenticatedEndpoints() {
-		//err = b.Websocket.AuthConn.Dial(&dialer, http.Header{})
-		//if err != nil {
-		//	log.Errorf(log.ExchangeSys,
-		//		"%v unable to connect to authenticated Websocket. Error: %s",
-		//		b.Name,
-		//		err)
-		//	b.Websocket.SetCanUseAuthenticatedEndpoints(false)
-		//}
-		//go b.wsReadData(b.Websocket.AuthConn)
-		//err = b.WsSendAuth()
-		//if err != nil {
-		//	log.Errorf(log.ExchangeSys,
-		//		"%v - authentication failed: %v\n",
-		//		b.Name,
-		//		err)
-		//	b.Websocket.SetCanUseAuthenticatedEndpoints(false)
-		//}
+	if b.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) {
+	//if b.Websocket.CanUseAuthenticatedEndpoints() {
+		authToken, err = b.GetWebsocketToken()
+		if err != nil {
+			b.Websocket.SetCanUseAuthenticatedEndpoints(false)
+			log.Errorf(log.ExchangeSys,
+				"%v - authentication failed: %v\n",
+				b.Name,
+				err)
+		} else {
+			err = b.WsSendAuth()
+			if err != nil {
+				log.Errorf(log.ExchangeSys,
+					"%v - authentication failed: %v\n",
+					b.Name,
+					err)
+				b.Websocket.SetCanUseAuthenticatedEndpoints(false)
+			}
+		}
 	}
 
 	go b.WsDataHandler()
@@ -997,23 +999,40 @@ func (b *Whitebit) WsSendAuth() error {
 		return fmt.Errorf("%v AuthenticatedWebsocketAPISupport not enabled",
 			b.Name)
 	}
-	nonce := strconv.FormatInt(time.Now().Unix(), 10)
-	payload := "AUTH" + nonce
-	request := WsAuthRequest{
-		Event:       "auth",
-		APIKey:      b.API.Credentials.Key,
-		AuthPayload: payload,
-		AuthSig: crypto.HexEncodeToString(crypto.GetHMAC(crypto.HashSHA512_384,
-			[]byte(payload),
-			[]byte(b.API.Credentials.Secret))),
-		AuthNonce:     nonce,
-		DeadManSwitch: 0,
+
+	request := WsRequest{
+		ID:       0,
+		Method:   "authorize",
+		Params: []interface{}{
+			authToken,
+			"public",
+		},
 	}
-	err := b.Websocket.AuthConn.SendJSONMessage(request)
+	err := b.Websocket.Conn.SendJSONMessage(request)
 	if err != nil {
+		fmt.Println("WsSendAuth FAIL")
 		b.Websocket.SetCanUseAuthenticatedEndpoints(false)
 		return err
 	}
+
+	fmt.Println("WsSendAuth OK")
+	time.Sleep(time.Second * 2)
+
+	request = WsRequest{
+		ID:       0,
+		Method:   "balanceSpot_request",
+		Params: []interface{}{
+			"ETH",
+			"BTC",
+		},
+	}
+	err = b.Websocket.Conn.SendJSONMessage(request)
+	if err != nil {
+		fmt.Println("balanceSpot_request FAIL")
+		b.Websocket.SetCanUseAuthenticatedEndpoints(false)
+		return err
+	}
+
 	return nil
 }
 

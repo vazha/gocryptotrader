@@ -931,7 +931,11 @@ func (b *Whitebit) GetOrderHistory(req *order.GetOrdersRequest) ([]order.Detail,
 
 // AuthenticateWebsocket sends an authentication message to the websocket
 func (b *Whitebit) AuthenticateWebsocket() error {
-	return b.WsSendAuth()
+	resp, err := b.GetWebsocketToken()
+	if resp != "" {
+		authToken = resp
+	}
+	return err
 }
 
 // appendOptionalDelimiter ensures that a delimiter is present for long character currencies

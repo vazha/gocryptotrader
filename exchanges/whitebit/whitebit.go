@@ -525,13 +525,6 @@ func (b *Whitebit) GetTrades(currencyPair string, limit, timestampStart, timesta
 // Values can contain limit amounts for both the asks and bids - Example
 // "len" = 100
 func (b *Whitebit) GetOrderbook(symbol, precision string, limit int64) (Orderbook, error) {
-	t, err := b.GetWebsocketToken()
-	if err != nil {
-		fmt.Println("TOKEN FAIL:", err)
-		return Orderbook{}, err
-	}
-	fmt.Println("TOKEN:", t)
-
 	var u = url.Values{}
 	if limit > 0 {
 		u.Set("len", strconv.FormatInt(limit, 10))
@@ -545,7 +538,7 @@ func (b *Whitebit) GetOrderbook(symbol, precision string, limit int64) (Orderboo
 	}
 
 	var response OrderBook
-	err = b.SendHTTPRequest(exchange.RestSpot, path, &response, orderbookFunction)
+	err := b.SendHTTPRequest(exchange.RestSpot, path, &response, orderbookFunction)
 	if err != nil {
 		return Orderbook{}, err
 	}
@@ -1396,7 +1389,7 @@ func (b *Whitebit) SendAuthenticatedHTTPRequest(ep exchange.URL, method, path st
 
 	return b.SendPayload(context.Background(), &request.Item{
 		Method:        method,
-		Path:          ePoint + whitebitAPIVersion + path,
+		Path:          ePoint + whitebitAPIVersion2 + path,
 		Headers:       headers,
 		Result:        result,
 		AuthRequest:   true,
@@ -1418,6 +1411,10 @@ func (b *Whitebit) SendAuthenticatedHTTPRequestV2(ep exchange.URL, method, path 
 	ePoint, err := b.API.Endpoints.GetURL(ep)
 	if err != nil {
 		return err
+	}
+
+	if len(params) == 0 {
+		params = make(map[string]interface{})
 	}
 
 	params["request"] = whitebitAPIVersion2 + path
@@ -1643,7 +1640,7 @@ func (b *Whitebit) PopulateAcceptableMethods() error {
 func (b *Whitebit) GetWebsocketToken() (string, error) {
 	var response WsTokenResponse
 	var err error
-	if err = b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, witebitGetWsToken, nil, &response, orderMulti); err != nil {
+	if err = b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost, witebitGetWsToken, nil, &response, orderMulti); err != nil {
 		return "", err
 	}
 
