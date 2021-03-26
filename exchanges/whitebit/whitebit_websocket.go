@@ -15,14 +15,11 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/currency"
-	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream/buffer"
-	//"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
-	//"github.com/thrasher-corp/gocryptotrader/exchanges/trade"
 	"github.com/thrasher-corp/gocryptotrader/log"
 )
 
@@ -56,8 +53,8 @@ func (b *Whitebit) WsConnect() error {
 	go b.wsReadData(b.Websocket.Conn)
 
 	fmt.Println("NEW:", b.Websocket.AuthConn.GetURL())
-	if b.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) {
-	//if b.Websocket.CanUseAuthenticatedEndpoints() {
+	//if b.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) {
+	if b.Websocket.CanUseAuthenticatedEndpoints() || true {
 		authToken, err = b.GetWebsocketToken()
 		if err != nil {
 			b.Websocket.SetCanUseAuthenticatedEndpoints(false)
@@ -995,10 +992,10 @@ func (b *Whitebit) Unsubscribe(channelsToUnsubscribe []stream.ChannelSubscriptio
 
 // WsSendAuth sends a autheticated event payload
 func (b *Whitebit) WsSendAuth() error {
-	if !b.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) {
-		return fmt.Errorf("%v AuthenticatedWebsocketAPISupport not enabled",
-			b.Name)
-	}
+	//if !b.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) {
+	//	return fmt.Errorf("%v AuthenticatedWebsocketAPISupport not enabled",
+	//		b.Name)
+	//}
 
 	request := WsRequest{
 		ID:       0,
@@ -1016,7 +1013,7 @@ func (b *Whitebit) WsSendAuth() error {
 	}
 
 	fmt.Println("WsSendAuth OK")
-	time.Sleep(time.Second * 2)
+	//time.Sleep(time.Second * 2)
 
 	request = WsRequest{
 		ID:       0,

@@ -35,60 +35,40 @@ const (
 	whitebitAccountFees        = "account_fees"
 	whitebitAccountSummary     = "summary"
 	whitebitDeposit            = "deposit/new"
-	whitebitBalances           = "main-account/balance"
+	whitebitBalances           = "trade-account/balance"
 	whitebitTransfer           = "transfer"
 	whitebitWithdrawal         = "withdraw"
-	whitebitOrderNew           = "order/new"
-	whitebitOrderNewMulti      = "order/new/multi"
+	whitebitMarketOrderNew     = "order/market"
+	whitebitLimitOrderNew      = "order/new"
 	whitebitOrderCancel        = "order/cancel"
 	whitebitOrderCancelMulti   = "order/cancel/multi"
 	whitebitOrderCancelAll     = "order/cancel/all"
 	whitebitOrderCancelReplace = "order/cancel/replace"
-	whitebitOrderStatus        = "order/status"
+	whitebitOrderStatus        = "trade-account/order"
 	whitebitInactiveOrders     = "orders/hist"
 	whitebitOrders             = "orders"
 	whitebitPositions          = "positions"
-	whitebitClaimPosition      = "position/claim"
 	whitebitHistory            = "history"
 	whitebitHistoryMovements   = "history/movements"
 	whitebitTradeHistory       = "mytrades"
-	whitebitOfferNew           = "offer/new"
-	whitebitOfferCancel        = "offer/cancel"
-	whitebitActiveCredits      = "credits"
-	whitebitOffers             = "offers"
-	whitebitMarginActiveFunds  = "taken_funds"
-	whitebitMarginUnusedFunds  = "unused_taken_funds"
-	whitebitMarginTotalFunds   = "total_taken_funds"
-	whitebitMarginClose        = "funding/close"
-	whitebitLendbook           = "lendbook/"
-	whitebitLends              = "lends/"
-	whitebitLeaderboard        = "rankings"
 
 	// Version 2 API endpoints
 	whitebitAPIVersion2     = "/api/v4/"
-	whitebitV2MarginFunding = "calc/trade/avg?"
 	whitebitV2Balances      = "trade-account/balance"
 	whitebitV2AccountInfo   = "auth/r/info/user"
 	whitebitV2FundingInfo   = "auth/r/info/funding/%s"
-	whitebitDerivativeData  = "status/deriv?"
 	whitebitPlatformStatus  = "platform/status"
 	whitebitTickerBatch     = "public/ticker"
 	whitebitTicker          = "ticker/"
 	whitebitTrades          = "trades/"
 	whitebitOrderbook       = "public/orderbook/"
-	whitebitStatistics      = "stats1/"
 	whitebitCandles         = "candles/trade"
 	whitebitKeyPermissions  = "key_info"
-	whitebitMarginInfo      = "margin_infos"
 	whitebitDepositMethod   = "main-account/address"
-	whitebitMarginPairs     = "conf/pub:list:pair:margin"
-
 
 	bitfinexMaintenanceMode = 0
 	bitfinexOperativeMode   = 1
 
-	bitfinexChecksumFlag   = 131072
-	bitfinexWsSequenceFlag = 65536
 	witebitGetWsToken = "profile/websocket_token"
 )
 
@@ -118,39 +98,6 @@ func (b *Whitebit) GetPlatformStatus() (int, error) {
 	}
 
 	return -1, fmt.Errorf("unexpected platform status value %d", response[0])
-}
-
-// GetV2MarginFunding gets borrowing rates for margin trading
-func (b *Whitebit) GetV2MarginFunding(symbol, amount string, period int32) (MarginV2FundingData, error) {
-	var resp []interface{}
-	var response MarginV2FundingData
-	params := make(map[string]interface{})
-	params["symbol"] = symbol
-	params["period"] = period
-	params["amount"] = amount
-	err := b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost,
-		whitebitV2MarginFunding,
-		params,
-		&resp,
-		getAccountFees)
-	if err != nil {
-		return response, err
-	}
-	if len(resp) != 2 {
-		return response, errors.New("invalid data received")
-	}
-	avgRate, ok := resp[0].(float64)
-	if !ok {
-		return response, errors.New("failed type assertion for rate")
-	}
-	avgAmount, ok := resp[1].(float64)
-	if !ok {
-		return response, errors.New("failed type assertion for amount")
-	}
-	response.Symbol = symbol
-	response.RateAverage = avgRate
-	response.AmountAverage = avgAmount
-	return response, nil
 }
 
 // GetV2FundingInfo gets funding info for margin pairs
@@ -282,100 +229,6 @@ func (b *Whitebit) GetV2Balances() ([]WalletDataV2, error) {
 	return resp, nil
 }
 
-// GetMarginPairs gets pairs that allow margin trading
-func (b *Whitebit) GetMarginPairs() ([]string, error) {
-	var resp [][]string
-	path := whitebitAPIVersion2 + whitebitMarginPairs
-	err := b.SendHTTPRequest(exchange.RestSpot, path, &resp, status)
-	if err != nil {
-		return nil, err
-	}
-	if len(resp) != 1 {
-		return nil, errors.New("invalid response")
-	}
-	return resp[0], nil
-}
-
-// GetDerivativeData gets data for the queried derivative
-func (b *Whitebit) GetDerivativeData(keys, startTime, endTime string, sort, limit int64) (DerivativeDataResponse, error) {
-	var result [][19]interface{}
-	var response DerivativeDataResponse
-
-	params := url.Values{}
-	params.Set("keys", keys)
-	if startTime != "" {
-		params.Set("start", startTime)
-	}
-	if endTime != "" {
-		params.Set("end", endTime)
-	}
-	if sort != 0 {
-		params.Set("sort", strconv.FormatInt(sort, 10))
-	}
-	if limit != 0 {
-		params.Set("limit", strconv.FormatInt(limit, 10))
-	}
-	path := whitebitAPIVersion2 + whitebitDerivativeData +
-		params.Encode()
-	err := b.SendHTTPRequest(exchange.RestSpot, path, &result, status)
-	if err != nil {
-		return response, err
-	}
-	if len(result) < 1 {
-		return response, errors.New("invalid response, array length too small, check api docs for updates")
-	}
-	if len(result[0]) < 19 {
-		return response, errors.New("invalid response, array length too small, check api docs for updates")
-	}
-	var floatData float64
-	var stringData string
-	var ok bool
-	if stringData, ok = result[0][0].(string); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.Key = stringData
-	if floatData, ok = result[0][1].(float64); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.MTS = floatData
-	if floatData, ok = result[0][3].(float64); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.DerivPrice = floatData
-	if floatData, ok = result[0][4].(float64); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.SpotPrice = floatData
-	if floatData, ok = result[0][6].(float64); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.InsuranceFundBalance = floatData
-	if floatData, ok = result[0][8].(float64); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.NextFundingEventTS = floatData
-	if floatData, ok = result[0][9].(float64); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.NextFundingAccured = floatData
-	if floatData, ok = result[0][10].(float64); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.NextFundingStep = floatData
-	if floatData, ok = result[0][12].(float64); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.CurrentFunding = floatData
-	if floatData, ok = result[0][15].(float64); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.MarkPrice = floatData
-	if floatData, ok = result[0][18].(float64); !ok {
-		return response, errors.New("type assertion failed, check for api updates")
-	}
-	response.OpenInterest = floatData
-	return response, nil
-}
 
 // GetTickerBatch returns all supported ticker information
 func (b *Whitebit) GetTickerBatch() (map[string]Ticker, error) {
@@ -577,35 +430,6 @@ func (b *Whitebit) GetStats(symbol string) ([]Stat, error) {
 	return response, b.SendHTTPRequest(exchange.RestSpot, path, &response, statsV1)
 }
 
-// GetFundingBook the entire margin funding book for both bids and asks sides
-// per currency string
-// symbol - example "USD"
-// WARNING: Orderbook now has this support, will be deprecated once a full
-// conversion to full V2 API update is done.
-func (b *Whitebit) GetFundingBook(symbol string) (FundingBook, error) {
-	response := FundingBook{}
-	path := whitebitAPIVersion + whitebitLendbook + symbol
-
-	if err := b.SendHTTPRequest(exchange.RestSpot, path, &response, fundingbook); err != nil {
-		return response, err
-	}
-
-	return response, nil
-}
-
-// GetLends returns a list of the most recent funding data for the given
-// currency: total amount provided and Flash Return Rate (in % by 365 days)
-// over time
-// Symbol - example "USD"
-func (b *Whitebit) GetLends(symbol string, values url.Values) ([]Lends, error) {
-	var response []Lends
-	path := common.EncodeURLValues(whitebitAPIVersion+
-		whitebitLends+
-		symbol,
-		values)
-	return response, b.SendHTTPRequest(exchange.RestSpot, path, &response, lends)
-}
-
 // GetCandles returns candle chart data
 // timeFrame values: '1m', '5m', '15m', '30m', '1h', '3h', '6h', '12h', '1D',
 // '7D', '14D', '1M'
@@ -697,93 +521,6 @@ func (b *Whitebit) GetStatus() error {
 	return common.ErrNotYetImplemented
 }
 
-// GetLiquidationFeed returns liquidations. By default it will retrieve the most
-// recent liquidations, but time-specific data can be retrieved using
-// timestamps.
-func (b *Whitebit) GetLiquidationFeed() error {
-	return common.ErrNotYetImplemented
-}
-
-// GetLeaderboard returns leaderboard standings for unrealized profit (period
-// delta), unrealized profit (inception), volume, and realized profit.
-// Allowed key values: "plu_diff" for unrealized profit (period delta), "plu"
-// for unrealized profit (inception); "vol" for volume; "plr" for realized
-// profit
-// Allowed time frames are 3h, 1w and 1M
-// Allowed symbols are trading pairs (e.g. tBTCUSD, tETHUSD and tGLOBAL:USD)
-func (b *Whitebit) GetLeaderboard(key, timeframe, symbol string, sort, limit int, start, end string) ([]LeaderboardEntry, error) {
-	validLeaderboardKey := func(input string) bool {
-		switch input {
-		case LeaderboardUnrealisedProfitPeriodDelta,
-			LeaderboardUnrealisedProfitInception,
-			LeaderboardVolume,
-			LeaderbookRealisedProfit:
-			return true
-		default:
-			return false
-		}
-	}
-
-	if !validLeaderboardKey(key) {
-		return nil, errors.New("invalid leaderboard key")
-	}
-
-	path := fmt.Sprintf("%s/%s:%s:%s/hist", whitebitAPIVersion2+whitebitLeaderboard,
-		key,
-		timeframe,
-		symbol)
-	vals := url.Values{}
-	if sort != 0 {
-		vals.Set("sort", strconv.Itoa(sort))
-	}
-	if limit != 0 {
-		vals.Set("limit", strconv.Itoa(limit))
-	}
-	if start != "" {
-		vals.Set("start", start)
-	}
-	if end != "" {
-		vals.Set("end", end)
-	}
-	path = common.EncodeURLValues(path, vals)
-	var resp []interface{}
-	if err := b.SendHTTPRequest(exchange.RestSpot, path, &resp, leaderBoardReqRate); err != nil {
-		return nil, err
-	}
-
-	parseTwitterHandle := func(i interface{}) string {
-		r, ok := i.(string)
-		if !ok {
-			return ""
-		}
-		return r
-	}
-
-	var result []LeaderboardEntry
-	for x := range resp {
-		r := resp[x].([]interface{})
-		result = append(result, LeaderboardEntry{
-			Timestamp:     time.Unix(0, int64(r[0].(float64))*int64(time.Millisecond)),
-			Username:      r[2].(string),
-			Ranking:       int(r[3].(float64)),
-			Value:         r[6].(float64),
-			TwitterHandle: parseTwitterHandle(r[9]),
-		})
-	}
-	return result, nil
-}
-
-// GetMarketAveragePrice calculates the average execution price for Trading or
-// rate for Margin funding
-func (b *Whitebit) GetMarketAveragePrice() error {
-	return common.ErrNotYetImplemented
-}
-
-// GetForeignExchangeRate calculates the exchange rate between two currencies
-func (b *Whitebit) GetForeignExchangeRate() error {
-	return common.ErrNotYetImplemented
-}
-
 // GetAccountFees returns information about your account trading fees
 func (b *Whitebit) GetAccountFees() ([]AccountInfo, error) {
 	var responses []AccountInfo
@@ -851,16 +588,6 @@ func (b *Whitebit) GetKeyPermissions() (KeyPermissions, error) {
 		nil,
 		&response,
 		getAccountFees)
-}
-
-// GetMarginInfo shows your trading wallet information for margin trading
-func (b *Whitebit) GetMarginInfo() ([]MarginInfo, error) {
-	var response []MarginInfo
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitMarginInfo,
-		nil,
-		&response,
-		getMarginInfo)
 }
 
 // GetAccountBalance returns full wallet balance information
@@ -978,51 +705,43 @@ func (b *Whitebit) WithdrawFIAT(withdrawalType, walletType string, withdrawReque
 }
 
 // NewOrder submits a new order and returns a order information
-// Major Upgrade needed on this function to include all query params
-func (b *Whitebit) NewOrder(currencyPair, orderType string, amount, price float64, buy, hidden bool) (Order, error) {
+func (b *Whitebit) NewOrder(currencyPair, orderType string, amount, price float64, orderSide string, hidden bool) (Order, error) {
 	if !common.StringDataCompare(AcceptedOrderType, orderType) {
 		return Order{}, fmt.Errorf("order type %s not accepted", orderType)
 	}
 
 	response := Order{}
 	req := make(map[string]interface{})
-	req["symbol"] = currencyPair
+	req["market"] = currencyPair
 	req["amount"] = strconv.FormatFloat(amount, 'f', -1, 64)
+	req["side"] = strings.ToLower(orderSide)
 	req["price"] = strconv.FormatFloat(price, 'f', -1, 64)
-	req["type"] = orderType
-	req["is_hidden"] = hidden
-	req["side"] = order.Sell.Lower()
-	if buy {
-		req["side"] = order.Buy.Lower()
+
+	var endpoint string
+	switch orderType {
+	case "market":
+		endpoint = whitebitMarketOrderNew
+	case "limit":
+		endpoint = whitebitLimitOrderNew
+	default:
+		endpoint = whitebitMarketOrderNew
 	}
 
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitOrderNew,
+	return response, b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost,
+		endpoint,
 		req,
 		&response,
 		orderV1)
 }
 
-// NewOrderMulti allows several new orders at once
-func (b *Whitebit) NewOrderMulti(orders []PlaceOrder) (OrderMultiResponse, error) {
-	response := OrderMultiResponse{}
-	req := make(map[string]interface{})
-	req["orders"] = orders
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitOrderNewMulti,
-		req,
-		&response,
-		orderMulti)
-}
-
 // CancelExistingOrder cancels a single order by OrderID
-func (b *Whitebit) CancelExistingOrder(orderID int64) (Order, error) {
+func (b *Whitebit) CancelExistingOrder(pair string, orderID int64) (Order, error) {
 	response := Order{}
 	req := make(map[string]interface{})
+	req["market"] = pair
 	req["order_id"] = orderID
 
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
+	return response, b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost,
 		whitebitOrderCancel,
 		req,
 		&response,
@@ -1082,9 +801,9 @@ func (b *Whitebit) ReplaceOrder(orderID int64, symbol string, amount, price floa
 func (b *Whitebit) GetOrderStatus(orderID int64) (Order, error) {
 	orderStatus := Order{}
 	req := make(map[string]interface{})
-	req["order_id"] = orderID
+	req["orderId"] = orderID
 
-	return orderStatus, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
+	return orderStatus, b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost,
 		whitebitOrderStatus,
 		req,
 		&orderStatus,
@@ -1107,7 +826,7 @@ func (b *Whitebit) GetInactiveOrders() ([]Order, error) {
 // GetOpenOrders returns all active orders and statuses
 func (b *Whitebit) GetOpenOrders() ([]Order, error) {
 	params := make(map[string]interface{})
-	params["market"] = "BTC_USDT"
+	params["market"] = "USDT_UAH"
 
 	var response []Order
 	return response, b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost,
@@ -1125,19 +844,6 @@ func (b *Whitebit) GetActivePositions() ([]Position, error) {
 		whitebitPositions,
 		nil,
 		&response,
-		orderMulti)
-}
-
-// ClaimPosition allows positions to be claimed
-func (b *Whitebit) ClaimPosition(positionID int) (Position, error) {
-	response := Position{}
-	req := make(map[string]interface{})
-	req["position_id"] = positionID
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitClaimPosition,
-		nil,
-		nil,
 		orderMulti)
 }
 
@@ -1215,120 +921,6 @@ func (b *Whitebit) GetTradeHistory(currencyPair string, timestamp, until time.Ti
 		req,
 		&response,
 		orderMulti)
-}
-
-// NewOffer submits a new offer
-func (b *Whitebit) NewOffer(symbol string, amount, rate float64, period int64, direction string) (Offer, error) {
-	response := Offer{}
-	req := make(map[string]interface{})
-	req["currency"] = symbol
-	req["amount"] = amount
-	req["rate"] = rate
-	req["period"] = period
-	req["direction"] = direction
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitOfferNew,
-		req,
-		&response,
-		orderMulti)
-}
-
-// CancelOffer cancels offer by offerID
-func (b *Whitebit) CancelOffer(offerID int64) (Offer, error) {
-	response := Offer{}
-	req := make(map[string]interface{})
-	req["offer_id"] = offerID
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitOfferCancel,
-		req,
-		&response,
-		orderMulti)
-}
-
-// GetOfferStatus checks offer status whether it has been cancelled, execute or
-// is still active
-func (b *Whitebit) GetOfferStatus(offerID int64) (Offer, error) {
-	response := Offer{}
-	req := make(map[string]interface{})
-	req["offer_id"] = offerID
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitOrderStatus,
-		req,
-		&response,
-		orderMulti)
-}
-
-// GetActiveCredits returns all available credits
-func (b *Whitebit) GetActiveCredits() ([]Offer, error) {
-	var response []Offer
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitActiveCredits,
-		nil,
-		&response,
-		orderMulti)
-}
-
-// GetActiveOffers returns all current active offers
-func (b *Whitebit) GetActiveOffers() ([]Offer, error) {
-	var response []Offer
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitOffers,
-		nil,
-		&response,
-		orderMulti)
-}
-
-// GetActiveMarginFunding returns an array of active margin funds
-func (b *Whitebit) GetActiveMarginFunding() ([]MarginFunds, error) {
-	var response []MarginFunds
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitMarginActiveFunds,
-		nil,
-		&response,
-		orderMulti)
-}
-
-// GetUnusedMarginFunds returns an array of funding borrowed but not currently
-// used
-func (b *Whitebit) GetUnusedMarginFunds() ([]MarginFunds, error) {
-	var response []MarginFunds
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitMarginUnusedFunds,
-		nil,
-		&response,
-		orderMulti)
-}
-
-// GetMarginTotalTakenFunds returns an array of active funding used in a
-// position
-func (b *Whitebit) GetMarginTotalTakenFunds() ([]MarginTotalTakenFunds, error) {
-	var response []MarginTotalTakenFunds
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitMarginTotalFunds,
-		nil,
-		&response,
-		orderMulti)
-}
-
-// CloseMarginFunding closes an unused or used taken fund
-func (b *Whitebit) CloseMarginFunding(swapID int64) (Offer, error) {
-	response := Offer{}
-	req := make(map[string]interface{})
-	req["swap_id"] = swapID
-
-	return response, b.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost,
-		whitebitMarginClose,
-		req,
-		&response,
-		closeFunding)
 }
 
 // SendHTTPRequest sends an unauthenticated request

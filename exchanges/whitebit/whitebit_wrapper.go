@@ -65,20 +65,7 @@ func (b *Whitebit) SetDefaults() {
 		ConfigFormat:  &currency.PairFormat{Uppercase: true},
 	}
 
-	fmt2 := currency.PairStore{
-		RequestFormat: &currency.PairFormat{Uppercase: true},
-		ConfigFormat:  &currency.PairFormat{Uppercase: true, Delimiter: ":"},
-	}
-
 	err := b.StoreAssetPairFormat(asset.Spot, fmt1)
-	if err != nil {
-		log.Errorln(log.ExchangeSys, err)
-	}
-	err = b.StoreAssetPairFormat(asset.Margin, fmt2)
-	if err != nil {
-		log.Errorln(log.ExchangeSys, err)
-	}
-	err = b.StoreAssetPairFormat(asset.MarginFunding, fmt1)
 	if err != nil {
 		log.Errorln(log.ExchangeSys, err)
 	}
@@ -276,14 +263,6 @@ func (b *Whitebit) FetchTradablePairs(a asset.Item) ([]string, error) {
 		for k := range items {
 			symbols = append(symbols, k)
 		}
-	case asset.Margin:
-		for k := range items {
-			symbols = append(symbols, k)
-		}
-	case asset.MarginFunding:
-		for k := range items {
-			symbols = append(symbols, k)
-		}
 	default:
 		return nil, errors.New("asset type not supported by this endpoint")
 	}
@@ -400,7 +379,7 @@ func (b *Whitebit) UpdateOrderbook(p currency.Pair, assetType asset.Item) (*orde
 
 	//fmt.Println("XXX", p, assetType, fPair)
 
-	if assetType != asset.Spot && assetType != asset.Margin && assetType != asset.MarginFunding {
+	if assetType != asset.Spot {
 		return o, fmt.Errorf("assetType not supported: %v", assetType)
 	}
 	b.appendOptionalDelimiter(&fPair)
@@ -410,40 +389,22 @@ func (b *Whitebit) UpdateOrderbook(p currency.Pair, assetType asset.Item) (*orde
 	if err != nil {
 		return nil, err
 	}
-	if assetType == asset.MarginFunding {
-		o.IsFundingRate = true
-		for x := range orderbookNew.Asks {
-			o.Asks = append(o.Asks, orderbook.Item{
-				ID:     orderbookNew.Asks[x].OrderID,
-				Price:  orderbookNew.Asks[x].Rate,
-				Amount: orderbookNew.Asks[x].Amount,
-				Period: int64(orderbookNew.Asks[x].Period),
-			})
-		}
-		for x := range orderbookNew.Bids {
-			o.Bids = append(o.Bids, orderbook.Item{
-				ID:     orderbookNew.Bids[x].OrderID,
-				Price:  orderbookNew.Bids[x].Rate,
-				Amount: orderbookNew.Bids[x].Amount,
-				Period: int64(orderbookNew.Bids[x].Period),
-			})
-		}
-	} else {
-		for x := range orderbookNew.Asks {
-			o.Asks = append(o.Asks, orderbook.Item{
-				ID:     orderbookNew.Asks[x].OrderID,
-				Price:  orderbookNew.Asks[x].Price,
-				Amount: orderbookNew.Asks[x].Amount,
-			})
-		}
-		for x := range orderbookNew.Bids {
-			o.Bids = append(o.Bids, orderbook.Item{
-				ID:     orderbookNew.Bids[x].OrderID,
-				Price:  orderbookNew.Bids[x].Price,
-				Amount: orderbookNew.Bids[x].Amount,
-			})
-		}
+
+	for x := range orderbookNew.Asks {
+		o.Asks = append(o.Asks, orderbook.Item{
+			ID:     orderbookNew.Asks[x].OrderID,
+			Price:  orderbookNew.Asks[x].Price,
+			Amount: orderbookNew.Asks[x].Amount,
+		})
 	}
+	for x := range orderbookNew.Bids {
+		o.Bids = append(o.Bids, orderbook.Item{
+			ID:     orderbookNew.Bids[x].OrderID,
+			Price:  orderbookNew.Bids[x].Price,
+			Amount: orderbookNew.Bids[x].Amount,
+		})
+	}
+
 	err = o.Process()
 	if err != nil {
 		return nil, err
@@ -492,7 +453,6 @@ func (b *Whitebit) FetchAccountInfo(assetType asset.Item) (account.Holdings, err
 	if err != nil {
 		return b.UpdateAccountInfo(assetType)
 	}
-
 	return acc, nil
 }
 
@@ -514,9 +474,6 @@ func (b *Whitebit) GetRecentTrades(p currency.Pair, assetType asset.Item) ([]tra
 
 // GetHistoricTrades returns historic trade data within the timeframe provided
 func (b *Whitebit) GetHistoricTrades(p currency.Pair, assetType asset.Item, timestampStart, timestampEnd time.Time) ([]trade.Data, error) {
-	if assetType == asset.MarginFunding {
-		return nil, fmt.Errorf("asset type '%v' not supported", assetType)
-	}
 	if timestampStart.Equal(timestampEnd) || timestampEnd.After(time.Now()) || timestampEnd.Before(timestampStart) {
 		return nil, fmt.Errorf("invalid time range supplied. Start: %v End %v", timestampStart, timestampEnd)
 	}
@@ -591,6 +548,7 @@ func (b *Whitebit) SubmitOrder(o *order.Submit) (order.SubmitResponse, error) {
 	}
 
 	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
+		fmt.Println("SUBMIT WS")
 		submitOrderResponse.OrderID, err = b.WsNewOrder(&WsNewOrderRequest{
 			CustomID: b.Websocket.AuthConn.GenerateMessageID(false),
 			Type:     o.Type.String(),
@@ -602,26 +560,25 @@ func (b *Whitebit) SubmitOrder(o *order.Submit) (order.SubmitResponse, error) {
 			return submitOrderResponse, err
 		}
 	} else {
+		fmt.Println("SUBMIT")
 		var response Order
-		isBuying := o.Side == order.Buy
 		b.appendOptionalDelimiter(&fpair)
 		orderType := o.Type.Lower()
-		if o.AssetType == asset.Spot {
-			orderType = "exchange " + orderType
-		}
+
 		response, err = b.NewOrder(fpair.String(),
 			orderType,
 			o.Amount,
 			o.Price,
-			isBuying,
+			o.Side.String(),
 			false)
 		if err != nil {
+			fmt.Println("ERRRRR:", err)
 			return submitOrderResponse, err
 		}
 		if response.ID > 0 {
 			submitOrderResponse.OrderID = strconv.FormatInt(response.ID, 10)
 		}
-		if response.RemainingAmount == 0 {
+		if response.Left == 0 {
 			submitOrderResponse.FullyMatched = true
 		}
 
@@ -668,7 +625,13 @@ func (b *Whitebit) CancelOrder(o *order.Cancel) error {
 	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
 		err = b.WsCancelOrder(orderIDInt)
 	} else {
-		_, err = b.CancelExistingOrder(orderIDInt)
+		fPair, err := b.FormatExchangeCurrency(o.Pair, o.AssetType)
+		if err != nil {
+			return err
+		}
+
+		b.appendOptionalDelimiter(&fPair)
+		_, err = b.CancelExistingOrder(o.Pair.String(),orderIDInt)
 	}
 	return err
 }
@@ -692,7 +655,23 @@ func (b *Whitebit) CancelAllOrders(_ *order.Cancel) (order.CancelAllResponse, er
 // GetOrderInfo returns order information based on order ID
 func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType asset.Item) (order.Detail, error) {
 	var orderDetail order.Detail
-	return orderDetail, common.ErrNotYetImplemented
+	//return orderDetail, common.ErrNotYetImplemented
+	//fPair, err := b.FormatExchangeCurrency(pair, assetType)
+	//if err != nil {
+	//	return orderDetail, err
+	//}
+	//
+	//b.appendOptionalDelimiter(&fPair)
+
+	ID, err := strconv.ParseInt(orderID, 10, 64)
+	if err != nil {
+		return orderDetail, err
+	}
+	fmt.Println("GetOrderStatus11")
+	o, err := b.GetOrderStatus(ID)
+	fmt.Println("GetOrderStatus:", o, err)
+
+	return orderDetail, err
 }
 
 // GetDepositAddress returns a deposit address for a specified currency
@@ -804,40 +783,25 @@ func (b *Whitebit) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail,
 
 	for i := range resp {
 		orderSide := order.Side(strings.ToUpper(resp[i].Side))
-		timestamp, err := strconv.ParseFloat(resp[i].Timestamp, 64)
-		if err != nil {
-			log.Warnf(log.ExchangeSys,
-				"Unable to convert timestamp '%s', leaving blank",
-				resp[i].Timestamp)
-		}
 
-		pair, err := currency.NewPairFromString(resp[i].Symbol)
+		pair, err := currency.NewPairFromString(resp[i].Market)
 		if err != nil {
 			return nil, err
 		}
 
 		orderDetail := order.Detail{
-			Amount:          resp[i].OriginalAmount,
-			Date:            time.Unix(int64(timestamp), 0),
+			Amount:          resp[i].Amount,
+			Date:            time.Unix(int64(resp[i].Timestamp), 0),
 			Exchange:        b.Name,
 			ID:              strconv.FormatInt(resp[i].ID, 10),
 			Side:            orderSide,
 			Price:           resp[i].Price,
-			RemainingAmount: resp[i].RemainingAmount,
+			RemainingAmount: resp[i].Left,
 			Pair:            pair,
-			ExecutedAmount:  resp[i].ExecutedAmount,
+			ExecutedAmount:  resp[i].DealMoney, // ??? need check
 		}
 
-		switch {
-		case resp[i].IsLive:
-			orderDetail.Status = order.Active
-		case resp[i].IsCancelled:
-			orderDetail.Status = order.Cancelled
-		case resp[i].IsHidden:
-			orderDetail.Status = order.Hidden
-		default:
-			orderDetail.Status = order.UnknownStatus
-		}
+		orderDetail.Status = order.Active
 
 		// API docs discrepancy. Example contains prefixed "exchange "
 		// Return type suggests “market” / “limit” / “stop” / “trailing-stop”
@@ -873,47 +837,43 @@ func (b *Whitebit) GetOrderHistory(req *order.GetOrdersRequest) ([]order.Detail,
 
 	for i := range resp {
 		orderSide := order.Side(strings.ToUpper(resp[i].Side))
-		timestamp, err := strconv.ParseInt(resp[i].Timestamp, 10, 64)
-		if err != nil {
-			log.Warnf(log.ExchangeSys, "Unable to convert timestamp '%v', leaving blank", resp[i].Timestamp)
-		}
-		orderDate := time.Unix(timestamp, 0)
 
-		pair, err := currency.NewPairFromString(resp[i].Symbol)
+		orderDate := time.Unix(int64(resp[i].Timestamp), 0)
+
+		pair, err := currency.NewPairFromString(resp[i].Market)
 		if err != nil {
 			return nil, err
 		}
 
 		orderDetail := order.Detail{
-			Amount:          resp[i].OriginalAmount,
+			Amount:          resp[i].Amount,
 			Date:            orderDate,
 			Exchange:        b.Name,
 			ID:              strconv.FormatInt(resp[i].ID, 10),
 			Side:            orderSide,
 			Price:           resp[i].Price,
-			RemainingAmount: resp[i].RemainingAmount,
-			ExecutedAmount:  resp[i].ExecutedAmount,
+			RemainingAmount: resp[i].Left,
 			Pair:            pair,
 		}
 
-		switch {
-		case resp[i].IsLive:
-			orderDetail.Status = order.Active
-		case resp[i].IsCancelled:
-			orderDetail.Status = order.Cancelled
-		case resp[i].IsHidden:
-			orderDetail.Status = order.Hidden
-		default:
-			orderDetail.Status = order.UnknownStatus
-		}
+		//switch {
+		//case resp[i].IsLive:
+		//	orderDetail.Status = order.Active
+		//case resp[i].IsCancelled:
+		//	orderDetail.Status = order.Cancelled
+		//default:
+		//	orderDetail.Status = order.UnknownStatus
+		//}
 
-		// API docs discrepency. Example contains prefixed "exchange "
-		// Return type suggests “market” / “limit” / “stop” / “trailing-stop”
-		orderType := strings.Replace(resp[i].Type, "exchange ", "", 1)
-		if orderType == "trailing-stop" {
-			orderDetail.Type = order.TrailingStop
-		} else {
-			orderDetail.Type = order.Type(strings.ToUpper(orderType))
+		switch resp[i].Type {
+		case "market":
+			orderDetail.Type = order.Market
+		case "limit":
+			orderDetail.Type = order.Limit
+		case "stop-limit":
+			orderDetail.Type = order.StopLimit
+		case "stop-market":
+			orderDetail.Type = order.StopMarket
 		}
 
 		orders = append(orders, orderDetail)
@@ -1057,9 +1017,6 @@ func (b *Whitebit) fixCasing(in currency.Pair, a asset.Item) (string, error) {
 	if a == asset.Spot {
 		checkString[0] = 't'
 		checkString[1] = 'T'
-	} else if a == asset.Margin {
-		checkString[0] = 'f'
-		checkString[1] = 'F'
 	}
 
 	fmt, err := b.FormatExchangeCurrency(in, a)

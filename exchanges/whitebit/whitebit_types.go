@@ -25,9 +25,7 @@ type WalletDataV2 struct {
 }
 
 // AcceptedOrderType defines the accepted market types, exchange strings denote non-contract order types.
-var AcceptedOrderType = []string{"market", "limit", "stop", "trailing-stop",
-	"fill-or-kill", "exchange market", "exchange limit", "exchange stop",
-	"exchange trailing-stop", "exchange fill-or-kill"}
+var AcceptedOrderType = []string{"market", "limit", "stop-limit", "stop-market"}
 
 // AcceptedWalletNames defines different wallets supported by the exchange
 var AcceptedWalletNames = []string{"trading", "exchange", "deposit", "margin",
@@ -303,23 +301,50 @@ type Withdrawal struct {
 
 // Order holds order information when an order is in the market
 type Order struct {
-	ID                    int64   `json:"id"`
-	Symbol                string  `json:"symbol"`
-	Exchange              string  `json:"exchange"`
+	Amount          float64 `json:"amount,string"`
+	DealFee         float64 `json:"dealFee,string"`
+	DealMoney       float64 `json:"dealMoney,string"`
+	DealStock       float64 `json:"dealStock,string"`
+	Left            float64 `json:"left,string"`
+	MakerFee              float64 `json:"makerFee,string"`
+	TakerFee              float64 `json:"takerFee,string"`
+	Market                string  `json:"market"`
+	ID                    int64   `json:"orderId"`
+	ClientOrderId         string  `json:"clientOrderId"`
 	Price                 float64 `json:"price,string"`
-	AverageExecutionPrice float64 `json:"avg_execution_price,string"`
 	Side                  string  `json:"side"`
+	Timestamp             float64 `json:"timestamp"`
 	Type                  string  `json:"type"`
-	Timestamp             string  `json:"timestamp"`
-	IsLive                bool    `json:"is_live"`
-	IsCancelled           bool    `json:"is_cancelled"`
-	IsHidden              bool    `json:"is_hidden"`
-	WasForced             bool    `json:"was_forced"`
-	OriginalAmount        float64 `json:"original_amount,string"`
-	RemainingAmount       float64 `json:"remaining_amount,string"`
-	ExecutedAmount        float64 `json:"executed_amount,string"`
-	OrderID               int64   `json:"order_id,omitempty"`
+
+	Deal            float64 `json:"deal,string"`
+	Fee             float64 `json:"fee,string"`
+	Role            int64   `json:"role"`
+	Time            float64 `json:"time"`
+	Ctime           float64 `json:"ctime"`
+	Ftime           float64 `json:"ftime"`
 }
+
+//// OrderHistory hold history order information
+//type OrderHistory struct {
+//	Amount          float64 `json:"amount,string"`
+//	Deal            float64 `json:"deal,string"`
+//	Fee             float64 `json:"fee,string"`
+//	ID              int64   `json:"orderId"`
+//	ClientOrderId   string  `json:"clientOrderId"`
+//	Price           float64 `json:"price,string"`
+//	Role            int64   `json:"role"`
+//	Side            string  `json:"side"`
+//	Time            float64 `json:"time"`
+//
+//	Ctime           float64 `json:"ctime"`
+//	DealFee         float64 `json:"dealFee,string"`
+//	DealMoney       float64 `json:"dealMoney,string"`
+//	DealStock       float64 `json:"dealStock,string"`
+//	Ftime           float64 `json:"ftime"`
+//	MakerFee        float64 `json:"makerFee,string"`
+//	TakerFee        float64 `json:"takerFee,string"`
+//	Type            string  `json:"type"`
+//}
 
 // OrderMultiResponse holds order information on the executed orders
 type OrderMultiResponse struct {

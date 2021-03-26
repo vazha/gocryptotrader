@@ -554,6 +554,7 @@ func (w *Websocket) trafficMonitor() {
 				w.setTrafficMonitorRunning(false)
 				return
 			case <-trafficAuthTimer.C: // Falls through when auth timer runs out
+				fmt.Println("KLEE")
 				trafficAuthTimer.Reset(w.trafficTimeout)
 				if w.verbose {
 					log.Warnf(log.WebsocketMgr,
