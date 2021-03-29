@@ -625,16 +625,22 @@ func (b *Whitebit) CancelOrder(o *order.Cancel) error {
 	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
 		err = b.WsCancelOrder(orderIDInt)
 	} else {
-		fPair, err := b.FormatExchangeCurrency(o.Pair, o.AssetType)
+		var fPair currency.Pair
+		fPair, err = b.FormatExchangeCurrency(o.Pair, o.AssetType)
 		if err != nil {
 			return err
 		}
 
 		b.appendOptionalDelimiter(&fPair)
-		_, err = b.CancelExistingOrder(o.Pair.String(),orderIDInt)
+		var resp Order
+		resp, err = b.CancelExistingOrder(fPair.String(), orderIDInt)
+		if err == nil && resp.Message != "" {
+			err = fmt.Errorf(resp.Message)
+		}
 	}
 	return err
 }
+
 
 // CancelBatchOrders cancels an orders by their corresponding ID numbers
 func (b *Whitebit) CancelBatchOrders(o []order.Cancel) (order.CancelBatchResponse, error) {
@@ -667,11 +673,56 @@ func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType as
 	if err != nil {
 		return orderDetail, err
 	}
-	fmt.Println("GetOrderStatus11")
+	//fmt.Println("GetOrderStatus11")
 	o, err := b.GetOrderStatus(ID)
-	fmt.Println("GetOrderStatus:", o, err)
+	//fmt.Printf("GetOrderStatus 2 :::: %+v\n", o)
+	if err == nil {
+		if o.Message != "" {
+			err = fmt.Errorf(o.Message)
+		} else {
+			msgs := CheckErrMsgs(o.Errors)
+			if msgs != "" {
+				err = fmt.Errorf(msgs)
+			}
+		}
+	}
 
-	return orderDetail, err
+	if err != nil {
+		return orderDetail, err
+	}
+
+	var trades []order.TradeHistory
+
+	orderDetail.AssetType = asset.Spot
+	for i := range o.Records {
+		//orderDetail.Pair = o.Result.Records[i].
+		orderDetail.Amount += o.Records[i].Amount
+		orderDetail.Cost += o.Records[i].Deal
+
+		var IsMaker bool
+		if o.Records[i].Role == 1 {
+			IsMaker = true
+		}
+
+		trades = append(trades, order.TradeHistory{
+			Price: o.Records[i].Price,
+			Amount: o.Records[i].Amount,
+			Fee: o.Records[i].Fee,
+			Exchange: b.Name,
+			TID: fmt.Sprint(o.Records[i].ID),
+			// Type: o.Result.Records[i].
+			// Side: o.Result.Records[i].
+			Timestamp: time.Unix(int64(o.Records[i].Time), 0),
+			IsMaker: IsMaker,
+			Total: o.Records[i].Deal, // ?
+		})
+	}
+
+	orderDetail.Pair = pair
+	orderDetail.Trades = trades
+	orderDetail.Exchange = b.Name
+	fmt.Printf("GetOrderStatus:::: %+v\n", orderDetail)
+	return orderDetail, nil
 }
 
 // GetDepositAddress returns a deposit address for a specified currency
@@ -773,13 +824,18 @@ func (b *Whitebit) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail,
 		return nil, err
 	}
 
+	if len(req.Pairs) == 0 {
+		return nil, fmt.Errorf("pair not passed")
+	}
+
 	var orders []order.Detail
-	resp, err := b.GetOpenOrders()
+	b.appendOptionalDelimiter(&req.Pairs[0])
+	resp, err := b.GetOpenOrders(req.Pairs[0].String())
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("GetOpenOrders", resp)
+	fmt.Printf("GetOpenOrders: %+v\n", resp)
 
 	for i := range resp {
 		orderSide := order.Side(strings.ToUpper(resp[i].Side))
@@ -1039,4 +1095,44 @@ func (b *Whitebit) fixCasing(in currency.Pair, a asset.Item) (string, error) {
 	}
 	runes[0] = unicode.ToLower(runes[0])
 	return string(runes), nil
+}
+
+
+func CheckErrMsgs (e Errors) (errMsg string) {
+	switch {
+	case len(e.Limit) > 0:
+		for i := range e.Limit {
+			if len(e.Limit) == i + 1 {
+				errMsg += e.Limit[i]
+			} else {
+				errMsg += e.Limit[i] + ", "
+			}
+		}
+	case len(e.Market) > 0:
+		for i := range e.Market {
+			if len(e.Market) == i + 1 {
+				errMsg += e.Market[i]
+			} else {
+				errMsg += e.Market[i] + ", "
+			}
+		}
+	case len(e.OrderId) > 0:
+		for i := range e.OrderId {
+			if len(e.OrderId) == i + 1 {
+				errMsg += e.OrderId[i]
+			} else {
+				errMsg += e.OrderId[i] + ", "
+			}
+		}
+	case len(e.Offset) > 0:
+		for i := range e.Offset {
+			if len(e.Offset) == i + 1 {
+				errMsg += e.Offset[i]
+			} else {
+				errMsg += e.Offset[i] + ", "
+			}
+		}
+	}
+
+	return
 }

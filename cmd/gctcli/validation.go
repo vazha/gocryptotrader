@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -16,7 +15,6 @@ var (
 )
 
 func validPair(pair string) bool {
-	fmt.Println("validPair:", pair, pairDelimiter)
 	return strings.Contains(pair, pairDelimiter)
 }
 

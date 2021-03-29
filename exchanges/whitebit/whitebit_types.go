@@ -322,6 +322,19 @@ type Order struct {
 	Time            float64 `json:"time"`
 	Ctime           float64 `json:"ctime"`
 	Ftime           float64 `json:"ftime"`
+
+	ActivationPrice       float64 `json:"activation_price,string"`
+
+	Code            int64   `json:"code"`
+	Errors			        `json:"errors"`
+	Message         string  `json:"message"`
+}
+
+type Errors struct {
+	Market          []string  `json:"market"`
+	OrderId         []string  `json:"orderId"`
+	Limit           []string  `json:"limit"`
+	Offset          []string  `json:"offset"`
 }
 
 //// OrderHistory hold history order information
@@ -828,4 +841,33 @@ type WsBookRequest struct {
 // WsTokenResponse holds the WS auth token
 type WsTokenResponse struct {
 	WebsocketToken  string `json:"websocket_token"`
+}
+
+type Record struct {
+	Amount          float64 `json:"amount,string"`
+	Deal            float64 `json:"deal,string"`
+	DealOrderId     int64   `json:"dealOrderId"`
+	Fee             float64 `json:"fee,string"`
+	ID              int64   `json:"orderId"`
+	ClientOrderId   string  `json:"clientOrderId"`
+	Price           float64 `json:"price,string"`
+	Role            int64   `json:"role"`
+	Time            float64 `json:"time"`
+}
+
+type Result struct {
+	Limit     int64 `json:"limit"`
+	Offset    int64 `json:"offset"`
+	Records   []Record  `json:"records"`
+}
+
+type ExecutedOrderDeals struct {
+	Limit     int64 `json:"limit"`
+	Offset    int64 `json:"offset"`
+	Records   []Record  `json:"records"`
+
+	//Result `json:"result"`
+	Code            int64   `json:"code"`
+	Errors			        `json:"errors"`
+	Message         string  `json:"message"`
 }

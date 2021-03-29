@@ -739,7 +739,7 @@ func (b *Whitebit) CancelExistingOrder(pair string, orderID int64) (Order, error
 	response := Order{}
 	req := make(map[string]interface{})
 	req["market"] = pair
-	req["order_id"] = orderID
+	req["orderId"] = orderID
 
 	return response, b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost,
 		whitebitOrderCancel,
@@ -798,8 +798,8 @@ func (b *Whitebit) ReplaceOrder(orderID int64, symbol string, amount, price floa
 }
 
 // GetOrderStatus returns order status information
-func (b *Whitebit) GetOrderStatus(orderID int64) (Order, error) {
-	orderStatus := Order{}
+func (b *Whitebit) GetOrderStatus(orderID int64) (ExecutedOrderDeals, error) {
+	var orderStatus ExecutedOrderDeals
 	req := make(map[string]interface{})
 	req["orderId"] = orderID
 
@@ -824,9 +824,9 @@ func (b *Whitebit) GetInactiveOrders() ([]Order, error) {
 }
 
 // GetOpenOrders returns all active orders and statuses
-func (b *Whitebit) GetOpenOrders() ([]Order, error) {
+func (b *Whitebit) GetOpenOrders(pair string) ([]Order, error) {
 	params := make(map[string]interface{})
-	params["market"] = "USDT_UAH"
+	params["market"] = pair
 
 	var response []Order
 	return response, b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost,
