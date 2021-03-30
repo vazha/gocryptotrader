@@ -829,6 +829,8 @@ type WsRequest struct {
 	ID      int64  `json:"id"`
 	Method  string  `json:"method"`
 	Params  []interface{} `json:"params"`
+	Result  interface{} `json:"result"`
+	Error   interface{} `json:"error"`
 }
 
 // WsRequest represent general struct or ws request
@@ -855,18 +857,17 @@ type Record struct {
 	Time            float64 `json:"time"`
 }
 
-type Result struct {
-	Limit     int64 `json:"limit"`
-	Offset    int64 `json:"offset"`
-	Records   []Record  `json:"records"`
-}
+//type Result struct {
+//	Limit     int64 `json:"limit"`
+//	Offset    int64 `json:"offset"`
+//	Records   []Record  `json:"records"`
+//}
 
 type ExecutedOrderDeals struct {
 	Limit     int64 `json:"limit"`
 	Offset    int64 `json:"offset"`
 	Records   []Record  `json:"records"`
 
-	//Result `json:"result"`
 	Code            int64   `json:"code"`
 	Errors			        `json:"errors"`
 	Message         string  `json:"message"`

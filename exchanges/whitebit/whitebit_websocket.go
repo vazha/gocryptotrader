@@ -633,6 +633,17 @@ func (b *Whitebit) wsHandleData(respRaw []byte) error {
 				return nil
 			}
 		}
+	default:
+		var isChannelExist bool
+		if result.ID > 0 {
+			isChannelExist = b.Websocket.Match.IncomingWithData(result.ID, respRaw)
+			//fmt.Println("EXIST", isChannelExist, string(respRaw))
+		}
+
+		if !isChannelExist && result.ID > 0 {
+			return fmt.Errorf("can't send ws incoming data to Matched channel with RequestID: %d",
+				result.ID)
+		}
 	}
 	return nil
 }
@@ -1287,4 +1298,139 @@ subSort:
 		}
 		break
 	}
+}
+
+// wsGetAccountBalance WS authenticated get balances. If no assets passed - return all assets
+func (b *Whitebit) wsGetAccountBalance(orderID int64, assets []string) (bals map[string]Balance, err  error) {
+	bals = make(map[string]Balance)
+
+	request := WsRequest{
+		ID:       orderID,
+		Method:   "balanceSpot_request",
+		Params: []interface{}{
+			//"ETH",
+			//"BTC",
+		},
+	}
+
+	for i := range assets {
+		request.Params = append(request.Params, assets[i])
+	}
+
+	resp, err := b.Websocket.Conn.SendMessageReturnResponse(orderID, request)
+	if err != nil {
+		return
+	}
+	if resp == nil {
+		return bals, fmt.Errorf("%v - wsGetAccountBalance failed", b.Name)
+	}
+
+	var responseData WsRequest
+	err = json.Unmarshal(resp, &responseData)
+	if err != nil {
+		return
+	}
+
+	if responseData.Error != nil {
+		return bals, fmt.Errorf("%v - wsGetAccountBalance failed: %s", b.Name, responseData.Error)
+	}
+
+	type Bbb struct {
+		Freeze    float64 `json:"freeze,string"`
+		Available float64 `json:"available,string"`
+	}
+
+	type X map[string]map[string]string
+
+	if bl, ok := responseData.Result.(map[string]interface{}); ok {
+		for k, v := range bl {
+			if bs, ok := v.(map[string]interface{}); ok {
+				var available, freeze float64
+				if available, err = strconv.ParseFloat(bs["available"].(string), 64); err != nil {
+					return bals, fmt.Errorf("%v - wsGetAccountBalance failed: %s", b.Name, err)
+				}
+
+				if freeze, err = strconv.ParseFloat(bs["freeze"].(string), 64); err != nil {
+					return bals, fmt.Errorf("%v - wsGetAccountBalance failed: %s", b.Name, err)
+				}
+
+				bals[k] = Balance{
+					Available: available,
+					Freeze: freeze,
+				}
+			}
+		}
+
+		return
+	}
+
+	return bals, fmt.Errorf("%v - wsGetAccountBalance failed", b.Name)
+}
+
+// wsGetOpenOrders WS authenticated get Open Orders. // Side 1 - sell, 2 - bid
+func (b *Whitebit) wsGetExecutedOrders(orderID int64, pair string, limit, offset int64) (orders []Order, err  error) {
+	request := WsRequest{
+		ID:       orderID,
+		Method:   "ordersExecuted_request",
+		Params: []interface{}{
+			map[string]interface{}{
+				"market": pair, // market
+				"order_types": []interface{}{1, 2},   // 1 - Limit, 2 - Market
+			},
+			offset,
+			limit,
+		},
+	}
+
+	resp, err := b.Websocket.Conn.SendMessageReturnResponse(orderID, request)
+	if err != nil {
+		fmt.Printf("WWW ERR %+v\n", err)
+		return
+	}
+	//if resp == nil {
+	//	return orders, fmt.Errorf("%v - wsGetOpenOrders failed", b.Name)
+	//}
+
+	fmt.Printf("%s WWW: %+v\n", pair, string(resp))
+
+	var responseData WsRequest
+	err = json.Unmarshal(resp, &responseData)
+	if err != nil {
+		return
+	}
+
+	if responseData.Error != nil {
+		return orders, fmt.Errorf("%v - wsGetOpenOrders failed: %s", b.Name, responseData.Error)
+	}
+
+	type Bbb struct {
+		Freeze    float64 `json:"freeze,string"`
+		Available float64 `json:"available,string"`
+	}
+
+	//type X map[string]map[string]string
+	//
+	//if bl, ok := responseData.Result.(map[string]interface{}); ok {
+	//	for k, v := range bl {
+	//		if bs, ok := v.(map[string]interface{}); ok {
+	//			var available, freeze float64
+	//			if available, err = strconv.ParseFloat(bs["available"].(string), 64); err != nil {
+	//				return orders, fmt.Errorf("%v - wsGetOpenOrders failed: %s", b.Name, err)
+	//			}
+	//
+	//			if freeze, err = strconv.ParseFloat(bs["freeze"].(string), 64); err != nil {
+	//				return orders, fmt.Errorf("%v - wsGetOpenOrders failed: %s", b.Name, err)
+	//			}
+	//
+	//			orders = Balance{
+	//				Available: available,
+	//				Freeze: freeze,
+	//			}
+	//		}
+	//	}
+	//
+	//	return
+	//}
+
+	return orders, fmt.Errorf("%v - wsGetOpenOrders failed", b.Name)
 }

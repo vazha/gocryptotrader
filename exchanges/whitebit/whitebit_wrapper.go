@@ -412,16 +412,33 @@ func (b *Whitebit) UpdateOrderbook(p currency.Pair, assetType asset.Item) (*orde
 	return orderbook.Get(b.Name, fPair, assetType)
 }
 
-// UpdateAccountInfo retrieves balances for all enabled currencies on the
-// Whitebit exchange
+// UpdateAccountInfo retrieves balances for all enabled currencies on the Whitebit exchange
 func (b *Whitebit) UpdateAccountInfo(assetType asset.Item) (account.Holdings, error) {
 	var response account.Holdings
-	response.Exchange = b.Name
-
-	accountBalance, err := b.GetAccountBalance()
-	if err != nil {
-		return response, err
+	var err error
+	var accountBalance map[string]Balance
+	Id := time.Now().UnixNano() / 1000
+	var getByWsOK bool
+	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
+		accountBalance, err =  b.wsGetAccountBalance(Id, nil)
+		if err != nil {
+			log.Errorf(log.ExchangeSys,
+				"%v - failed to get AccountBalance by websocket. %v\n",
+				b.Name,
+				err)
+		} else {
+			getByWsOK = true
+		}
 	}
+
+	if !getByWsOK {
+		accountBalance, err = b.GetAccountBalance()
+		if err != nil {
+			return response, err
+		}
+	}
+
+	response.Exchange = b.Name
 
 	var bl []account.Balance
 
@@ -443,7 +460,6 @@ func (b *Whitebit) UpdateAccountInfo(assetType asset.Item) (account.Holdings, er
 	}
 
 	response.Exchange = b.Name
-
 	return response, nil
 }
 
@@ -661,21 +677,81 @@ func (b *Whitebit) CancelAllOrders(_ *order.Cancel) (order.CancelAllResponse, er
 // GetOrderInfo returns order information based on order ID
 func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType asset.Item) (order.Detail, error) {
 	var orderDetail order.Detail
-	//return orderDetail, common.ErrNotYetImplemented
+
 	//fPair, err := b.FormatExchangeCurrency(pair, assetType)
 	//if err != nil {
 	//	return orderDetail, err
 	//}
-	//
-	//b.appendOptionalDelimiter(&fPair)
 
+	b.appendOptionalDelimiter(&pair)
 	ID, err := strconv.ParseInt(orderID, 10, 64)
 	if err != nil {
 		return orderDetail, err
 	}
-	//fmt.Println("GetOrderStatus11")
+
+	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() { // Websocket attempt
+		for i := 0; i < 9; i++ {
+			fmt.Println("ATT:", i)
+			Id := time.Now().UnixNano() / 1000
+			resp, err := b.wsGetExecutedOrders(Id, pair.String(), 100, int64(i * 100))
+			if err != nil {
+				log.Errorf(log.ExchangeSys,
+					"%v - failed to get Executed Orders by websocket. %v\n",
+					b.Name,
+					err)
+				break
+			} else {
+				for i := range resp {
+					if resp[i].ID != ID { // order found
+						continue
+					}
+
+					switch resp[i].Type {
+					case "1":
+						orderDetail.Type = order.Limit
+					case "2":
+						orderDetail.Type = order.Market
+					case "3":
+						orderDetail.Type = order.StopLimit
+					case "4":
+						orderDetail.Type = order.StopMarket
+					default:
+						orderDetail.Type = order.UnknownType
+					}
+
+					switch resp[i].Side {
+					case "1":
+						orderDetail.Side = order.Sell
+					case "2":
+						orderDetail.Side = order.Buy
+					default:
+						orderDetail.Side = order.UnknownSide // or return?
+					}
+
+					orderDetail.Amount = resp[i].Amount
+					orderDetail.Price = resp[i].Price
+					orderDetail.Fee = resp[i].DealFee
+					orderDetail.Cost = resp[i].DealMoney
+					orderDetail.Date = time.Unix(int64(resp[i].Ctime), 0)
+					orderDetail.LastUpdated =time.Unix(int64(resp[i].Ftime), 0)
+					orderDetail.Exchange = b.Name
+					orderDetail.ID = orderID
+					orderDetail.ClientOrderID = resp[i].ClientOrderId
+					orderDetail.AssetType = asset.Spot
+					orderDetail.Pair = pair
+					return orderDetail, nil
+				}
+			}
+		}
+	}
+
+	// REST attempt
 	o, err := b.GetOrderStatus(ID)
-	//fmt.Printf("GetOrderStatus 2 :::: %+v\n", o)
+	if err != nil {
+		return orderDetail, err
+	}
+
+	//fmt.Printf("GetOrderStatus 2: %+v\n", o)
 	if err == nil {
 		if o.Message != "" {
 			err = fmt.Errorf(o.Message)
@@ -830,9 +906,28 @@ func (b *Whitebit) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail,
 
 	var orders []order.Detail
 	b.appendOptionalDelimiter(&req.Pairs[0])
-	resp, err := b.GetOpenOrders(req.Pairs[0].String())
-	if err != nil {
-		return nil, err
+
+	var err error
+	var resp []Order
+	Id := time.Now().UnixNano() / 1000
+	var getByWsOK bool
+	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
+		resp, err = b.wsGetExecutedOrders(Id, req.Pairs[0].String(), 30, 0)
+		if err != nil {
+			log.Errorf(log.ExchangeSys,
+				"%v - failed to get AccountBalance by websocket. %v\n",
+				b.Name,
+				err)
+		} else {
+			getByWsOK = true
+		}
+	}
+
+	if !getByWsOK {
+		resp, err = b.GetOpenOrders(req.Pairs[0].String())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	fmt.Printf("GetOpenOrders: %+v\n", resp)
