@@ -323,7 +323,8 @@ type Order struct {
 	Ctime           float64 `json:"ctime"`
 	Ftime           float64 `json:"ftime"`
 
-	ActivationPrice       float64 `json:"activation_price,string"`
+	ActivationPrice  float64 `json:"activation_price,string"`
+	Source           string  `json:"source"` // used on closed orders
 
 	Code            int64   `json:"code"`
 	Errors			        `json:"errors"`
@@ -855,6 +856,19 @@ type Record struct {
 	Price           float64 `json:"price,string"`
 	Role            int64   `json:"role"`
 	Time            float64 `json:"time"`
+
+	OrderID          int64   `json:"id"`
+	CTime            float64 `json:"ctime"`
+	FTime            float64 `json:"ftime"`
+	Market           string  `json:"market"`
+	Type             int64   `json:"type"`
+	Side             int64   `json:"side"`
+	DealStock        float64 `json:"deal_stock,string"`
+	DealMoney        float64 `json:"deal_money,string"`
+	DealFee          float64 `json:"deal_fee,string"`
+	Source           string  `json:"source"`
+	MakerFee 		 float64 `json:"maker_fee,string"`
+	TakerFee 		 float64 `json:"taker_fee,string"`
 }
 
 //type Result struct {
@@ -866,9 +880,24 @@ type Record struct {
 type ExecutedOrderDeals struct {
 	Limit     int64 `json:"limit"`
 	Offset    int64 `json:"offset"`
+	Total     int64 `json:"total"`
 	Records   []Record  `json:"records"`
 
 	Code            int64   `json:"code"`
 	Errors			        `json:"errors"`
 	Message         string  `json:"message"`
+}
+
+type ExecutedOrders map[string][]Order
+
+type RESTOrdersExecuted struct {
+	Code            int64   `json:"code"`
+	Message         string  `json:"message"`
+}
+
+// WsRequest represent general struct or ws request
+type WsOrdersExecuted struct {
+	ID      int64  `json:"id"`
+	Result  ExecutedOrderDeals `json:"result"`
+	Error   interface{} `json:"error"`
 }

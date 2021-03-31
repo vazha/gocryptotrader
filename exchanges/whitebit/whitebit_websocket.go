@@ -641,8 +641,23 @@ func (b *Whitebit) wsHandleData(respRaw []byte) error {
 		}
 
 		if !isChannelExist && result.ID > 0 {
-			return fmt.Errorf("can't send ws incoming data to Matched channel with RequestID: %d",
-				result.ID)
+			var showMessage bool
+			switch result.Result.(type) {
+			case map[string]interface{}:
+				result := result.Result.(map[string]interface{})
+				if status, ok := result["status"]; ok {
+					switch status {
+					case "success":
+					default:
+						showMessage = true
+					}
+				}
+			}
+
+			if showMessage {
+				return fmt.Errorf("can't send ws incoming data to Matched channel with RequestID: %d, %+v",
+					result.ID, (result.Result.(map[string]interface{}))["status"].(string))
+			}
 		}
 	}
 	return nil
@@ -1367,7 +1382,7 @@ func (b *Whitebit) wsGetAccountBalance(orderID int64, assets []string) (bals map
 	return bals, fmt.Errorf("%v - wsGetAccountBalance failed", b.Name)
 }
 
-// wsGetOpenOrders WS authenticated get Open Orders. // Side 1 - sell, 2 - bid
+// wsGetExecutedOrders WS authenticated get Closed Orders. // Side 1 - sell, 2 - bid
 func (b *Whitebit) wsGetExecutedOrders(orderID int64, pair string, limit, offset int64) (orders []Order, err  error) {
 	request := WsRequest{
 		ID:       orderID,
@@ -1384,7 +1399,6 @@ func (b *Whitebit) wsGetExecutedOrders(orderID int64, pair string, limit, offset
 
 	resp, err := b.Websocket.Conn.SendMessageReturnResponse(orderID, request)
 	if err != nil {
-		fmt.Printf("WWW ERR %+v\n", err)
 		return
 	}
 	//if resp == nil {
@@ -1393,20 +1407,42 @@ func (b *Whitebit) wsGetExecutedOrders(orderID int64, pair string, limit, offset
 
 	fmt.Printf("%s WWW: %+v\n", pair, string(resp))
 
-	var responseData WsRequest
+	var responseData WsOrdersExecuted
 	err = json.Unmarshal(resp, &responseData)
 	if err != nil {
 		return
 	}
 
 	if responseData.Error != nil {
-		return orders, fmt.Errorf("%v - wsGetOpenOrders failed: %s", b.Name, responseData.Error)
+		return orders, fmt.Errorf("%v - wsGetExecutedOrders failed: %s", b.Name, responseData.Error)
 	}
 
-	type Bbb struct {
-		Freeze    float64 `json:"freeze,string"`
-		Available float64 `json:"available,string"`
+	//fmt.Printf("VVV: %+v\n", responseData.Result)
+	for i := range responseData.Result.Records {
+		orders = append(orders, Order{
+			ID: responseData.Result.Records[i].OrderID,
+			Ctime: responseData.Result.Records[i].CTime,
+			Ftime: responseData.Result.Records[i].FTime,
+			Market: responseData.Result.Records[i].Market,
+			Source: responseData.Result.Records[i].Source,
+			Type: fmt.Sprint(responseData.Result.Records[i].Type),
+			Side: fmt.Sprint(responseData.Result.Records[i].Side),
+			Price: responseData.Result.Records[i].Price,
+			Amount: responseData.Result.Records[i].Amount,
+			TakerFee: responseData.Result.Records[i].TakerFee,
+			MakerFee: responseData.Result.Records[i].MakerFee,
+			DealStock: responseData.Result.Records[i].DealStock,
+			DealMoney: responseData.Result.Records[i].DealMoney,
+			DealFee: responseData.Result.Records[i].DealFee,
+			ClientOrderId: responseData.Result.Records[i].ClientOrderId,
+		})
 	}
+
+
+	//type Bbb struct {
+	//	Freeze    float64 `json:"freeze,string"`
+	//	Available float64 `json:"available,string"`
+	//}
 
 	//type X map[string]map[string]string
 	//
@@ -1432,5 +1468,5 @@ func (b *Whitebit) wsGetExecutedOrders(orderID int64, pair string, limit, offset
 	//	return
 	//}
 
-	return orders, fmt.Errorf("%v - wsGetOpenOrders failed", b.Name)
+	return orders, nil
 }

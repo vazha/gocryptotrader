@@ -677,23 +677,19 @@ func (b *Whitebit) CancelAllOrders(_ *order.Cancel) (order.CancelAllResponse, er
 // GetOrderInfo returns order information based on order ID
 func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType asset.Item) (order.Detail, error) {
 	var orderDetail order.Detail
-
-	//fPair, err := b.FormatExchangeCurrency(pair, assetType)
-	//if err != nil {
-	//	return orderDetail, err
-	//}
-
+	orderDetail.AssetType = asset.Spot
 	b.appendOptionalDelimiter(&pair)
+
 	ID, err := strconv.ParseInt(orderID, 10, 64)
 	if err != nil {
 		return orderDetail, err
 	}
 
-	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() { // Websocket attempt
-		for i := 0; i < 9; i++ {
-			fmt.Println("ATT:", i)
+	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() && false { // Websocket attempt
+		for i := 0; i < 10; i++ { // 10 * 100 = 1000 last orders
 			Id := time.Now().UnixNano() / 1000
-			resp, err := b.wsGetExecutedOrders(Id, pair.String(), 100, int64(i * 100))
+			var limit int64 = 100
+			resp, err := b.wsGetExecutedOrders(Id, pair.String(), limit, int64(i * 100))
 			if err != nil {
 				log.Errorf(log.ExchangeSys,
 					"%v - failed to get Executed Orders by websocket. %v\n",
@@ -701,8 +697,12 @@ func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType as
 					err)
 				break
 			} else {
+				if len(resp) == 0 { // if no orders found
+					break
+				}
+
 				for i := range resp {
-					if resp[i].ID != ID { // order found
+					if resp[i].ID != ID { // order not matched
 						continue
 					}
 
@@ -729,7 +729,7 @@ func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType as
 					}
 
 					orderDetail.Amount = resp[i].Amount
-					orderDetail.Price = resp[i].Price
+					orderDetail.Price = resp[i].DealMoney / resp[i].Amount// resp[i].Price
 					orderDetail.Fee = resp[i].DealFee
 					orderDetail.Cost = resp[i].DealMoney
 					orderDetail.Date = time.Unix(int64(resp[i].Ctime), 0)
@@ -741,63 +741,118 @@ func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType as
 					orderDetail.Pair = pair
 					return orderDetail, nil
 				}
+
+				if len(resp) < int(limit) { // if num of orders less than limit - no reason to do next request
+					break
+				}
 			}
 		}
 	}
 
 	// REST attempt
-	o, err := b.GetOrderStatus(ID)
-	if err != nil {
-		return orderDetail, err
-	}
-
-	//fmt.Printf("GetOrderStatus 2: %+v\n", o)
-	if err == nil {
-		if o.Message != "" {
-			err = fmt.Errorf(o.Message)
+	//o, err := b.GetOrderStatus(ID)
+	for i := 0; i < 10; i++ { // 10 * 100 = 1000 last orders
+		fmt.Println("REST att:", i)
+		var limit int64 = 100
+		resp, err := b.GetExecutedOrdersHistory(pair.String(), limit, int64(i*100))
+		if err != nil {
+			return order.Detail{}, err
 		} else {
-			msgs := CheckErrMsgs(o.Errors)
-			if msgs != "" {
-				err = fmt.Errorf(msgs)
+			if len(resp.Records) == 0 { // if no orders found
+				break
+			}
+
+			for i := range resp.Records {
+				if resp.Records[i].DealOrderId != ID { // order not matched
+					fmt.Println("REST ID:", resp.Records[i], ID)
+					continue
+				}
+
+				switch resp.Records[i].Type {
+				case 1:
+					orderDetail.Type = order.Limit
+				case 2:
+					orderDetail.Type = order.Market
+				case 3:
+					orderDetail.Type = order.StopLimit
+				case 4:
+					orderDetail.Type = order.StopMarket
+				default:
+					orderDetail.Type = order.UnknownType
+				}
+
+				switch resp.Records[i].Side {
+				case 1:
+					orderDetail.Side = order.Sell
+				case 2:
+					orderDetail.Side = order.Buy
+				default:
+					orderDetail.Side = order.UnknownSide // or return?
+				}
+
+				orderDetail.Amount = resp.Records[i].Amount
+				orderDetail.Price = resp.Records[i].DealMoney / resp.Records[i].Amount// resp[i].Price
+				orderDetail.Fee = resp.Records[i].DealFee
+				orderDetail.Cost = resp.Records[i].DealMoney
+				orderDetail.Date = time.Unix(int64(resp.Records[i].Time), 0)
+				orderDetail.LastUpdated =time.Unix(int64(resp.Records[i].Time), 0)
+				orderDetail.Exchange = b.Name
+				orderDetail.ID = orderID
+				orderDetail.ClientOrderID = resp.Records[i].ClientOrderId
+				orderDetail.AssetType = asset.Spot
+				orderDetail.Pair = pair
+				return orderDetail, nil
+			}
+
+			if len(resp.Records) < int(limit) { // if num of orders less than limit - no reason to do next request
+				break
 			}
 		}
 	}
 
-	if err != nil {
-		return orderDetail, err
-	}
+	//fmt.Println("GetExecutedOrdersHistory:", o, err)
 
-	var trades []order.TradeHistory
+	//if o.Message != "" {
+	//	err = fmt.Errorf(o.Message)
+	//} else {
+	//	errMsg := CheckErrMsgs(o.Errors)
+	//	if errMsg != "" {
+	//		err = fmt.Errorf(errMsg)
+	//	}
+	//}
+	//
+	//if err != nil {
+	//	return orderDetail, err
+	//}
+	//
+	//var trades []order.TradeHistory
+	//for i := range o.Records {
+	//	//orderDetail.Pair = ""//o.Result.Records[i].
+	//	orderDetail.Amount += o.Records[i].Amount
+	//	orderDetail.Cost += o.Records[i].Deal
+	//
+	//	var IsMaker bool
+	//	if o.Records[i].Role == 1 {
+	//		IsMaker = true
+	//	}
+	//
+	//	trades = append(trades, order.TradeHistory{
+	//		Price: o.Records[i].Price,
+	//		Amount: o.Records[i].Amount,
+	//		Fee: o.Records[i].Fee,
+	//		Exchange: b.Name,
+	//		TID: fmt.Sprint(o.Records[i].ID),
+	//		// Type: o.Result.Records[i].
+	//		// Side: o.Result.Records[i].
+	//		Timestamp: time.Unix(int64(o.Records[i].Time), 0),
+	//		IsMaker: IsMaker,
+	//		Total: o.Records[i].Deal, // ?
+	//	})
+	//}
 
-	orderDetail.AssetType = asset.Spot
-	for i := range o.Records {
-		//orderDetail.Pair = o.Result.Records[i].
-		orderDetail.Amount += o.Records[i].Amount
-		orderDetail.Cost += o.Records[i].Deal
-
-		var IsMaker bool
-		if o.Records[i].Role == 1 {
-			IsMaker = true
-		}
-
-		trades = append(trades, order.TradeHistory{
-			Price: o.Records[i].Price,
-			Amount: o.Records[i].Amount,
-			Fee: o.Records[i].Fee,
-			Exchange: b.Name,
-			TID: fmt.Sprint(o.Records[i].ID),
-			// Type: o.Result.Records[i].
-			// Side: o.Result.Records[i].
-			Timestamp: time.Unix(int64(o.Records[i].Time), 0),
-			IsMaker: IsMaker,
-			Total: o.Records[i].Deal, // ?
-		})
-	}
-
-	orderDetail.Pair = pair
-	orderDetail.Trades = trades
+	//orderDetail.Pair = pair
+	//orderDetail.Trades = trades
 	orderDetail.Exchange = b.Name
-	fmt.Printf("GetOrderStatus:::: %+v\n", orderDetail)
 	return orderDetail, nil
 }
 
@@ -907,30 +962,33 @@ func (b *Whitebit) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail,
 	var orders []order.Detail
 	b.appendOptionalDelimiter(&req.Pairs[0])
 
-	var err error
-	var resp []Order
-	Id := time.Now().UnixNano() / 1000
-	var getByWsOK bool
-	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
-		resp, err = b.wsGetExecutedOrders(Id, req.Pairs[0].String(), 30, 0)
-		if err != nil {
-			log.Errorf(log.ExchangeSys,
-				"%v - failed to get AccountBalance by websocket. %v\n",
-				b.Name,
-				err)
-		} else {
-			getByWsOK = true
-		}
-	}
+	//var err error
+	//var resp []Order
+	//Id := time.Now().UnixNano() / 1000
+	//var getByWsOK bool
+	//if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
+	//	resp, err = b.wsGetExecutedOrders(Id, req.Pairs[0].String(), 30, 0)
+	//	fmt.Println("GetActiveOrders", resp, err)
+	//	if err != nil {
+	//		log.Errorf(log.ExchangeSys,
+	//			"%v - failed to get GetActiveOrders by websocket. %v\n",
+	//			b.Name,
+	//			err)
+	//	} else {
+	//		getByWsOK = true
+	//	}
+	//}
 
-	if !getByWsOK {
-		resp, err = b.GetOpenOrders(req.Pairs[0].String())
-		if err != nil {
-			return nil, err
-		}
-	}
+	//if !getByWsOK {
+	//
+	//}
+	//
+	//fmt.Printf("GetOpenOrders: %+v\n", resp)
 
-	fmt.Printf("GetOpenOrders: %+v\n", resp)
+	resp, err := b.GetOpenOrders(req.Pairs[0].String())
+	if err != nil {
+		return nil, err
+	}
 
 	for i := range resp {
 		orderSide := order.Side(strings.ToUpper(resp[i].Side))

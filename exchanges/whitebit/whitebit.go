@@ -44,7 +44,8 @@ const (
 	whitebitOrderCancelMulti   = "order/cancel/multi"
 	whitebitOrderCancelAll     = "order/cancel/all"
 	whitebitOrderCancelReplace = "order/cancel/replace"
-	whitebitOrderStatus        = "trade-account/order"
+	whitebitOrderStatus        = "trade-account/order" // deals
+	whitebitExecutedOrders     = "trade-account/executed-history"
 	whitebitInactiveOrders     = "orders/hist"
 	whitebitOrders             = "orders"
 	whitebitPositions          = "positions"
@@ -808,6 +809,91 @@ func (b *Whitebit) GetOrderStatus(orderID int64) (ExecutedOrderDeals, error) {
 		req,
 		&orderStatus,
 		orderMulti)
+}
+
+// GetOrderStatus returns order status information
+func (b *Whitebit) GetExecutedOrdersHistory(pair string, limit, offset int64) (o ExecutedOrderDeals , err error) {
+	req := make(map[string]interface{})
+	var resp interface{}
+	var records []Record
+
+	if limit == 0 {
+		limit = 100
+	}
+
+	req["market"] = pair
+	req["limit"] = limit
+	req["offset"] = offset
+
+	err = b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost,
+		whitebitExecutedOrders,
+		req,
+		&resp,
+		orderMulti)
+
+	if err != nil {
+		return
+	}
+	fmt.Printf("%+v\n", resp)
+
+	switch resp.(type) {
+	case []interface{}:
+		for i := range resp.([]interface{}) {
+			var r Record
+			switch resp.([]interface{})[i].(type) {
+			case map[string]interface{}:
+				a := resp.([]interface{})[i].(map[string]interface{})
+				for k, v := range a {
+					switch k {
+					case "amount":
+						if amount, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.Amount = amount
+						}
+					case "deal":
+						if deal, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.Deal = deal
+						}
+					case "fee":
+						if fee, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.Fee = fee
+						}
+					case "id":
+						r.ID = int64(v.(float64))
+					case "clientOrderId":
+						r.ClientOrderId = v.(string)
+					case "price":
+						if price, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.Price = price
+						}
+					case "role":
+						r.Role = int64(v.(float64))
+					case "side":
+						switch v.(string) {
+						case "sell":
+							r.Side = 1
+						case "buy":
+							r.Side = 2
+						}
+					case "time":
+						r.Time = v.(float64)
+					}
+				}
+			}
+
+			r.Market = pair
+			records = append(records, r)
+		}
+	case map[string]interface{}:
+		fmt.Println("----", 2)
+	default:
+		fmt.Println("----", resp)
+	}
+
+	//fmt.Printf("R: %+v\n", resp)
+	//fmt.Printf("R: %+v\n", r)
+	o.Records = records
+
+	return o, err
 }
 
 // GetInactiveOrders returns order status information
