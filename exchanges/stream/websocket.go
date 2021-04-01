@@ -498,6 +498,10 @@ func (w *Websocket) trafficMonitor() {
 			trafficAuthTimer.Stop()
 		}
 
+		if w.CanUseAuthenticatedEndpoints() && w.AuthConn == nil{
+			trafficAuthTimer.Stop()
+		}
+
 		for {
 			select {
 			case <-w.ShutdownC:
@@ -514,6 +518,7 @@ func (w *Websocket) trafficMonitor() {
 				//fmt.Println("TrafficAlert", t)
 				switch {
 				case w.AuthConn != nil && w.AuthConn.GetURL() == t:
+					fmt.Println("TrafficAlert Auth", t)
 					if !trafficAuthTimer.Stop() {
 						select {
 						case <-trafficAuthTimer.C:
@@ -523,6 +528,7 @@ func (w *Websocket) trafficMonitor() {
 					w.setConnectedStatus(true)
 					trafficAuthTimer.Reset(w.trafficTimeout)
 				case w.Conn != nil && w.Conn.GetURL() == t:
+					//fmt.Println("TrafficAlert NON Auth", t)
 					if !trafficTimer.Stop() {
 						select {
 						case <-trafficTimer.C:

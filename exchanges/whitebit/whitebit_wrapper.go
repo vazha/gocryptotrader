@@ -201,21 +201,21 @@ func (b *Whitebit) Setup(exch *config.ExchangeConfig) error {
 		return err
 	}
 
-	err = b.Websocket.SetupNewConnection(stream.ConnectionSetup{
+	return b.Websocket.SetupNewConnection(stream.ConnectionSetup{
 		ResponseCheckTimeout: exch.WebsocketResponseCheckTimeout,
 		ResponseMaxLimit:     exch.WebsocketResponseMaxLimit,
 		URL:                  publicWhitebitWebsocketEndpoint,
 	})
-	if err != nil {
-		return err
-	}
-
-	return b.Websocket.SetupNewConnection(stream.ConnectionSetup{
-		ResponseCheckTimeout: exch.WebsocketResponseCheckTimeout,
-		ResponseMaxLimit:     exch.WebsocketResponseMaxLimit,
-		URL:                  authenticatedWhitebitWebsocketEndpoint,
-		Authenticated:        true,
-	})
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//return b.Websocket.SetupNewConnection(stream.ConnectionSetup{
+	//	ResponseCheckTimeout: exch.WebsocketResponseCheckTimeout,
+	//	ResponseMaxLimit:     exch.WebsocketResponseMaxLimit,
+	//	URL:                  authenticatedWhitebitWebsocketEndpoint,
+	//	Authenticated:        true,
+	//})
 }
 
 // Start starts the Whitebit go routine
@@ -563,68 +563,34 @@ func (b *Whitebit) SubmitOrder(o *order.Submit) (order.SubmitResponse, error) {
 		return submitOrderResponse, err
 	}
 
-	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
-		fmt.Println("SUBMIT WS")
-		submitOrderResponse.OrderID, err = b.WsNewOrder(&WsNewOrderRequest{
-			CustomID: b.Websocket.AuthConn.GenerateMessageID(false),
-			Type:     o.Type.String(),
-			Symbol:   fpair.String(),
-			Amount:   o.Amount,
-			Price:    o.Price,
-		})
-		if err != nil {
-			return submitOrderResponse, err
-		}
-	} else {
-		fmt.Println("SUBMIT")
-		var response Order
-		b.appendOptionalDelimiter(&fpair)
-		orderType := o.Type.Lower()
+	var response Order
+	b.appendOptionalDelimiter(&fpair)
+	orderType := o.Type.Lower()
 
-		response, err = b.NewOrder(fpair.String(),
-			orderType,
-			o.Amount,
-			o.Price,
-			o.Side.String(),
-			false)
-		if err != nil {
-			fmt.Println("ERRRRR:", err)
-			return submitOrderResponse, err
-		}
-		if response.ID > 0 {
-			submitOrderResponse.OrderID = strconv.FormatInt(response.ID, 10)
-		}
-		if response.Left == 0 {
-			submitOrderResponse.FullyMatched = true
-		}
-
-		submitOrderResponse.IsOrderPlaced = true
+	response, err = b.NewOrder(fpair.String(),
+		orderType,
+		o.Amount,
+		o.Price,
+		o.Side.String(),
+		false)
+	if err != nil {
+		return submitOrderResponse, err
 	}
+	if response.ID > 0 {
+		submitOrderResponse.OrderID = strconv.FormatInt(response.ID, 10)
+	}
+	if response.Left == 0 {
+		submitOrderResponse.FullyMatched = true
+	}
+
+	submitOrderResponse.IsOrderPlaced = true
+
 	return submitOrderResponse, err
 }
 
 // ModifyOrder will allow of changing orderbook placement and limit to
 // market conversion
 func (b *Whitebit) ModifyOrder(action *order.Modify) (string, error) {
-	if err := action.Validate(); err != nil {
-		return "", err
-	}
-
-	orderIDInt, err := strconv.ParseInt(action.ID, 10, 64)
-	if err != nil {
-		return action.ID, err
-	}
-	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
-		if action.Side == order.Sell && action.Amount > 0 {
-			action.Amount = -1 * action.Amount
-		}
-		err = b.WsModifyOrder(&WsUpdateOrderRequest{
-			OrderID: orderIDInt,
-			Price:   action.Price,
-			Amount:  action.Amount,
-		})
-		return action.ID, err
-	}
 	return "", common.ErrNotYetImplemented
 }
 
@@ -638,22 +604,20 @@ func (b *Whitebit) CancelOrder(o *order.Cancel) error {
 	if err != nil {
 		return err
 	}
-	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
-		err = b.WsCancelOrder(orderIDInt)
-	} else {
-		var fPair currency.Pair
-		fPair, err = b.FormatExchangeCurrency(o.Pair, o.AssetType)
-		if err != nil {
-			return err
-		}
 
-		b.appendOptionalDelimiter(&fPair)
-		var resp Order
-		resp, err = b.CancelExistingOrder(fPair.String(), orderIDInt)
-		if err == nil && resp.Message != "" {
-			err = fmt.Errorf(resp.Message)
-		}
+	var fPair currency.Pair
+	fPair, err = b.FormatExchangeCurrency(o.Pair, o.AssetType)
+	if err != nil {
+		return err
 	}
+
+	b.appendOptionalDelimiter(&fPair)
+	var resp Order
+	resp, err = b.CancelExistingOrder(fPair.String(), orderIDInt)
+	if err == nil && resp.Message != "" {
+		err = fmt.Errorf(resp.Message)
+	}
+
 	return err
 }
 
@@ -666,11 +630,7 @@ func (b *Whitebit) CancelBatchOrders(o []order.Cancel) (order.CancelBatchRespons
 // CancelAllOrders cancels all orders associated with a currency pair
 func (b *Whitebit) CancelAllOrders(_ *order.Cancel) (order.CancelAllResponse, error) {
 	var err error
-	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
-		err = b.WsCancelAllOrders()
-	} else {
-		_, err = b.CancelAllExistingOrders()
-	}
+	_, err = b.CancelAllExistingOrders()
 	return order.CancelAllResponse{}, err
 }
 
@@ -685,7 +645,8 @@ func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType as
 		return orderDetail, err
 	}
 
-	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() && false { // Websocket attempt
+	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() { // Websocket attempt
+		fmt.Println("WS order")
 		for i := 0; i < 10; i++ { // 10 * 100 = 1000 last orders
 			Id := time.Now().UnixNano() / 1000
 			var limit int64 = 100
@@ -752,9 +713,9 @@ func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType as
 	// REST attempt
 	//o, err := b.GetOrderStatus(ID)
 	for i := 0; i < 10; i++ { // 10 * 100 = 1000 last orders
-		fmt.Println("REST att:", i)
+		fmt.Println("REST order")
 		var limit int64 = 100
-		resp, err := b.GetExecutedOrdersHistory(pair.String(), limit, int64(i*100))
+		resp, err := b.GetExecutedOrdersByMarket(pair.String(), limit, int64(i*100))
 		if err != nil {
 			return order.Detail{}, err
 		} else {
@@ -763,8 +724,7 @@ func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType as
 			}
 
 			for i := range resp.Records {
-				if resp.Records[i].DealOrderId != ID { // order not matched
-					fmt.Println("REST ID:", resp.Records[i], ID)
+				if resp.Records[i].ID != ID { // order not matched
 					continue
 				}
 
@@ -962,66 +922,56 @@ func (b *Whitebit) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail,
 	var orders []order.Detail
 	b.appendOptionalDelimiter(&req.Pairs[0])
 
-	//var err error
-	//var resp []Order
-	//Id := time.Now().UnixNano() / 1000
-	//var getByWsOK bool
-	//if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
-	//	resp, err = b.wsGetExecutedOrders(Id, req.Pairs[0].String(), 30, 0)
-	//	fmt.Println("GetActiveOrders", resp, err)
-	//	if err != nil {
-	//		log.Errorf(log.ExchangeSys,
-	//			"%v - failed to get GetActiveOrders by websocket. %v\n",
-	//			b.Name,
-	//			err)
-	//	} else {
-	//		getByWsOK = true
-	//	}
-	//}
-
-	//if !getByWsOK {
-	//
-	//}
-	//
 	//fmt.Printf("GetOpenOrders: %+v\n", resp)
-
-	resp, err := b.GetOpenOrders(req.Pairs[0].String())
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range resp {
-		orderSide := order.Side(strings.ToUpper(resp[i].Side))
-
-		pair, err := currency.NewPairFromString(resp[i].Market)
+	for i := 0; i < 10; i++ { // 10 * 100 = 1000 last orders
+		var limit int64 = 100
+		resp, err := b.GetOpenOrders(req.Pairs[0].String(), limit, int64(i*100))
 		if err != nil {
 			return nil, err
-		}
-
-		orderDetail := order.Detail{
-			Amount:          resp[i].Amount,
-			Date:            time.Unix(int64(resp[i].Timestamp), 0),
-			Exchange:        b.Name,
-			ID:              strconv.FormatInt(resp[i].ID, 10),
-			Side:            orderSide,
-			Price:           resp[i].Price,
-			RemainingAmount: resp[i].Left,
-			Pair:            pair,
-			ExecutedAmount:  resp[i].DealMoney, // ??? need check
-		}
-
-		orderDetail.Status = order.Active
-
-		// API docs discrepancy. Example contains prefixed "exchange "
-		// Return type suggests “market” / “limit” / “stop” / “trailing-stop”
-		orderType := strings.Replace(resp[i].Type, "exchange ", "", 1)
-		if orderType == "trailing-stop" {
-			orderDetail.Type = order.TrailingStop
 		} else {
-			orderDetail.Type = order.Type(strings.ToUpper(orderType))
+			if len(resp) == 0 {
+				return nil, fmt.Errorf("no orders found")
+			}
+
+			for i := range resp {
+				orderSide := order.Side(strings.ToUpper(resp[i].Side))
+
+				pair, err := currency.NewPairFromString(resp[i].Market)
+				if err != nil {
+					return nil, err
+				}
+
+				orderDetail := order.Detail{
+					Amount:          resp[i].Amount,
+					Date:            time.Unix(int64(resp[i].Timestamp), 0),
+					Exchange:        b.Name,
+					ID:              strconv.FormatInt(resp[i].ID, 10),
+					Side:            orderSide,
+					Price:           resp[i].Price,
+					RemainingAmount: resp[i].Left,
+					Pair:            pair,
+					ExecutedAmount:  resp[i].DealMoney, // ??? need check
+				}
+
+				orderDetail.Status = order.Active
+
+				// API docs discrepancy. Example contains prefixed "exchange "
+				// Return type suggests “market” / “limit” / “stop” / “trailing-stop”
+				orderType := strings.Replace(resp[i].Type, "exchange ", "", 1)
+				if orderType == "trailing-stop" {
+					orderDetail.Type = order.TrailingStop
+				} else {
+					orderDetail.Type = order.Type(strings.ToUpper(orderType))
+				}
+
+				orders = append(orders, orderDetail)
+			}
 		}
 
-		orders = append(orders, orderDetail)
+		if int64(len(resp)) < limit {
+			fmt.Println("BREAK LOOP")
+			break
+		}
 	}
 
 	order.FilterOrdersBySide(&orders, req.Side)

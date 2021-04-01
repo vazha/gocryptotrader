@@ -46,6 +46,7 @@ const (
 	whitebitOrderCancelReplace = "order/cancel/replace"
 	whitebitOrderStatus        = "trade-account/order" // deals
 	whitebitExecutedOrders     = "trade-account/executed-history"
+	whitebitExecutedOrdersByMarket     = "trade-account/order/history"
 	whitebitInactiveOrders     = "orders/hist"
 	whitebitOrders             = "orders"
 	whitebitPositions          = "positions"
@@ -811,7 +812,7 @@ func (b *Whitebit) GetOrderStatus(orderID int64) (ExecutedOrderDeals, error) {
 		orderMulti)
 }
 
-// GetOrderStatus returns order status information
+// GetOrderStatus returns orders deals
 func (b *Whitebit) GetExecutedOrdersHistory(pair string, limit, offset int64) (o ExecutedOrderDeals , err error) {
 	req := make(map[string]interface{})
 	var resp interface{}
@@ -896,6 +897,105 @@ func (b *Whitebit) GetExecutedOrdersHistory(pair string, limit, offset int64) (o
 	return o, err
 }
 
+// GetOrderStatus returns orders deals
+func (b *Whitebit) GetExecutedOrdersByMarket(pair string, limit, offset int64) (o ExecutedOrderDeals , err error) {
+	req := make(map[string]interface{})
+	var resp interface{}
+	var records []Record
+
+	if limit == 0 {
+		limit = 100
+	}
+
+	req["market"] = pair
+	req["limit"] = limit
+	req["offset"] = offset
+
+	err = b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost,
+		whitebitExecutedOrdersByMarket,
+		req,
+		&resp,
+		orderMulti)
+
+	if err != nil {
+		return
+	}
+	//fmt.Printf("%+v\n", resp)
+
+	switch resp.(type) {
+	case map[string]interface{}:
+		for p, a := range resp.(map[string]interface{}) {
+			var r Record
+			for i := range a.([]interface{}) {
+				for k, v := range a.([]interface{})[i].(map[string]interface{}) {
+					switch k {
+					case "amount":
+						if amount, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.Amount = amount
+						}
+					case "dealFee":
+						if DealFee, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.DealFee = DealFee
+						}
+					case "makerFee":
+						if MakerFee, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.MakerFee = MakerFee
+						}
+					case "takerFee":
+						if TakerFee, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.TakerFee = TakerFee
+						}
+					case "dealMoney":
+						if dealMoney, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.DealMoney = dealMoney
+						}
+					case "dealStock":
+						if dealStock, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.DealStock = dealStock
+						}
+					case "id":
+						r.ID = int64(v.(float64))
+					case "clientOrderId":
+						r.ClientOrderId = v.(string)
+					case "price":
+						if price, err := strconv.ParseFloat(v.(string), 64); err == nil {
+							r.Price = price
+						}
+					case "type":
+						switch v.(string) {
+						case "limit":
+							r.Type = 1
+						case "market":
+							r.Type = 2
+						}
+					case "side":
+						switch v.(string) {
+						case "sell":
+							r.Side = 1
+						case "buy":
+							r.Side = 2
+						}
+					case "ctime":
+						r.CTime = v.(float64)
+					case "ftime":
+						r.FTime = v.(float64)
+					}
+				}
+
+				r.Market = p
+				records = append(records, r)
+			}
+		}
+	default:
+		fmt.Println("----", resp)
+	}
+
+	//fmt.Printf("R: %+v\n", records)
+	//fmt.Printf("R: %+v\n", r)
+	o.Records = records
+	return o, err
+}
+
 // GetInactiveOrders returns order status information
 func (b *Whitebit) GetInactiveOrders() ([]Order, error) {
 	var response []Order
@@ -910,9 +1010,11 @@ func (b *Whitebit) GetInactiveOrders() ([]Order, error) {
 }
 
 // GetOpenOrders returns all active orders and statuses
-func (b *Whitebit) GetOpenOrders(pair string) ([]Order, error) {
+func (b *Whitebit) GetOpenOrders(pair string, limit, offset int64) ([]Order, error) {
 	params := make(map[string]interface{})
 	params["market"] = pair
+	params["limit"] = limit
+	params["offset"] = offset
 
 	var response []Order
 	return response, b.SendAuthenticatedHTTPRequestV2(exchange.RestSpot, http.MethodPost,

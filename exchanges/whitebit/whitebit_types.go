@@ -325,6 +325,7 @@ type Order struct {
 
 	ActivationPrice  float64 `json:"activation_price,string"`
 	Source           string  `json:"source"` // used on closed orders
+	OrderID          int64   `json:"id"` // used on executed orders by market
 
 	Code            int64   `json:"code"`
 	Errors			        `json:"errors"`

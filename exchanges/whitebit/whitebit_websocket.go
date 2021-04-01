@@ -16,7 +16,6 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/stream/buffer"
@@ -52,9 +51,8 @@ func (b *Whitebit) WsConnect() error {
 
 	go b.wsReadData(b.Websocket.Conn)
 
-	fmt.Println("NEW:", b.Websocket.AuthConn.GetURL())
 	//if b.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) {
-	if b.Websocket.CanUseAuthenticatedEndpoints() || true {
+	if b.Websocket.CanUseAuthenticatedEndpoints() {
 		authToken, err = b.GetWebsocketToken()
 		if err != nil {
 			b.Websocket.SetCanUseAuthenticatedEndpoints(false)
@@ -663,117 +661,6 @@ func (b *Whitebit) wsHandleData(respRaw []byte) error {
 	return nil
 }
 
-func (b *Whitebit) wsHandleFundingOffer(data []interface{}) {
-	var fo WsFundingOffer
-	if data[0] != nil {
-		fo.ID = int64(data[0].(float64))
-	}
-	if data[1] != nil {
-		fo.Symbol = data[1].(string)[1:]
-	}
-	if data[2] != nil {
-		fo.Created = int64(data[2].(float64))
-	}
-	if data[3] != nil {
-		fo.Updated = int64(data[0].(float64))
-	}
-	if data[15] != nil {
-		fo.Period = int64(data[15].(float64))
-	}
-	if data[4] != nil {
-		fo.Amount = data[4].(float64)
-	}
-	if data[5] != nil {
-		fo.OriginalAmount = data[5].(float64)
-	}
-	if data[6] != nil {
-		fo.Type = data[6].(string)
-	}
-	if data[9] != nil {
-		fo.Flags = data[9].(float64)
-	}
-	if data[9] != nil {
-		fo.Status = data[10].(string)
-	}
-	if data[9] != nil {
-		fo.Rate = data[14].(float64)
-	}
-	if data[16] != nil {
-		fo.Notify = data[16].(float64) == 1
-	}
-	if data[17] != nil {
-		fo.Hidden = data[17].(float64) == 1
-	}
-	if data[18] != nil {
-		fo.Insure = data[18].(float64) == 1
-	}
-	if data[19] != nil {
-		fo.Renew = data[19].(float64) == 1
-	}
-	if data[20] != nil {
-		fo.RateReal = data[20].(float64)
-	}
-
-	b.Websocket.DataHandler <- fo
-}
-
-func (b *Whitebit) wsHandleOrder(data []interface{}) {
-	var od order.Detail
-	var err error
-	od.Exchange = b.Name
-	if data[0] != nil {
-		od.ID = strconv.FormatFloat(data[0].(float64), 'f', -1, 64)
-	}
-	if data[16] != nil {
-		od.Price = data[16].(float64)
-	}
-	if data[7] != nil {
-		od.Amount = data[7].(float64)
-	}
-	if data[6] != nil {
-		od.RemainingAmount = data[6].(float64)
-	}
-	if data[7] != nil && data[6] != nil {
-		od.ExecutedAmount = data[7].(float64) - data[6].(float64)
-	}
-	if data[4] != nil {
-		od.Date = time.Unix(int64(data[4].(float64))*1000, 0)
-	}
-	if data[5] != nil {
-		od.LastUpdated = time.Unix(int64(data[5].(float64))*1000, 0)
-	}
-	if data[2] != nil {
-		od.Pair, od.AssetType, err = b.GetRequestFormattedPairAndAssetType(data[3].(string)[1:])
-		if err != nil {
-			b.Websocket.DataHandler <- err
-			return
-		}
-	}
-	if data[8] != nil {
-		oType, err := order.StringToOrderType(data[8].(string))
-		if err != nil {
-			b.Websocket.DataHandler <- order.ClassificationError{
-				Exchange: b.Name,
-				OrderID:  od.ID,
-				Err:      err,
-			}
-		}
-		od.Type = oType
-	}
-	if data[13] != nil {
-		oStatus, err := order.StringToOrderStatus(data[13].(string))
-		if err != nil {
-			b.Websocket.DataHandler <- order.ClassificationError{
-				Exchange: b.Name,
-				OrderID:  od.ID,
-				Err:      err,
-			}
-		}
-		od.Status = oStatus
-	}
-	b.Websocket.DataHandler <- &od
-}
-
 // WsInsertSnapshot add the initial orderbook snapshot when subscribed to a
 // channel
 func (b *Whitebit) WsInsertSnapshot(p currency.Pair, assetType asset.Item, books []WebsocketBook, fundingRate bool) error {
@@ -1075,148 +962,6 @@ func (b *Whitebit) WsAddSubscriptionChannel(chanID int, channel, pair string) {
 	}
 }
 
-// WsNewOrder authenticated new order request
-func (b *Whitebit) WsNewOrder(data *WsNewOrderRequest) (string, error) {
-	data.CustomID = b.Websocket.AuthConn.GenerateMessageID(false)
-	request := makeRequestInterface(wsOrderNew, data)
-	resp, err := b.Websocket.AuthConn.SendMessageReturnResponse(data.CustomID, request)
-	if err != nil {
-		return "", err
-	}
-	if resp == nil {
-		return "", errors.New(b.Name + " - Order message not returned")
-	}
-	var respData []interface{}
-	err = json.Unmarshal(resp, &respData)
-	if err != nil {
-		return "", err
-	}
-	responseDataDetail := respData[2].([]interface{})
-	responseOrderDetail := responseDataDetail[4].([]interface{})
-	var orderID string
-	if responseOrderDetail[0] != nil && responseOrderDetail[0].(float64) > 0 {
-		orderID = strconv.FormatFloat(responseOrderDetail[0].(float64), 'f', -1, 64)
-	}
-	errCode := responseDataDetail[6].(string)
-	errorMessage := responseDataDetail[7].(string)
-
-	if strings.EqualFold(errCode, wsError) {
-		return orderID, errors.New(b.Name + " - " + errCode + ": " + errorMessage)
-	}
-
-	return orderID, nil
-}
-
-// WsModifyOrder authenticated modify order request
-func (b *Whitebit) WsModifyOrder(data *WsUpdateOrderRequest) error {
-	request := makeRequestInterface(wsOrderUpdate, data)
-	resp, err := b.Websocket.AuthConn.SendMessageReturnResponse(data.OrderID, request)
-	if err != nil {
-		return err
-	}
-	if resp == nil {
-		return errors.New(b.Name + " - Order message not returned")
-	}
-
-	var responseData []interface{}
-	err = json.Unmarshal(resp, &responseData)
-	if err != nil {
-		return err
-	}
-	responseOrderData := responseData[2].([]interface{})
-	errCode := responseOrderData[6].(string)
-	errorMessage := responseOrderData[7].(string)
-	if strings.EqualFold(errCode, wsError) {
-		return errors.New(b.Name + " - " + errCode + ": " + errorMessage)
-	}
-
-	return nil
-}
-
-// WsCancelMultiOrders authenticated cancel multi order request
-func (b *Whitebit) WsCancelMultiOrders(orderIDs []int64) error {
-	cancel := WsCancelGroupOrdersRequest{
-		OrderID: orderIDs,
-	}
-	request := makeRequestInterface(wsCancelMultipleOrders, cancel)
-	return b.Websocket.AuthConn.SendJSONMessage(request)
-}
-
-// WsCancelOrder authenticated cancel order request
-func (b *Whitebit) WsCancelOrder(orderID int64) error {
-	cancel := WsCancelOrderRequest{
-		OrderID: orderID,
-	}
-	request := makeRequestInterface(wsOrderCancel, cancel)
-	resp, err := b.Websocket.AuthConn.SendMessageReturnResponse(orderID, request)
-	if err != nil {
-		return err
-	}
-	if resp == nil {
-		return fmt.Errorf("%v - Order %v failed to cancel", b.Name, orderID)
-	}
-	var responseData []interface{}
-	err = json.Unmarshal(resp, &responseData)
-	if err != nil {
-		return err
-	}
-	responseOrderData := responseData[2].([]interface{})
-	errCode := responseOrderData[6].(string)
-	errorMessage := responseOrderData[7].(string)
-	if strings.EqualFold(errCode, wsError) {
-		return errors.New(b.Name + " - " + errCode + ": " + errorMessage)
-	}
-
-	return nil
-}
-
-// WsCancelAllOrders authenticated cancel all orders request
-func (b *Whitebit) WsCancelAllOrders() error {
-	cancelAll := WsCancelAllOrdersRequest{All: 1}
-	request := makeRequestInterface(wsCancelMultipleOrders, cancelAll)
-	return b.Websocket.AuthConn.SendJSONMessage(request)
-}
-
-// WsNewOffer authenticated new offer request
-func (b *Whitebit) WsNewOffer(data *WsNewOfferRequest) error {
-	request := makeRequestInterface(wsFundingOrderNew, data)
-	return b.Websocket.AuthConn.SendJSONMessage(request)
-}
-
-// WsCancelOffer authenticated cancel offer request
-func (b *Whitebit) WsCancelOffer(orderID int64) error {
-	cancel := WsCancelOrderRequest{
-		OrderID: orderID,
-	}
-	request := makeRequestInterface(wsFundingOrderCancel, cancel)
-	resp, err := b.Websocket.AuthConn.SendMessageReturnResponse(orderID, request)
-	if err != nil {
-		return err
-	}
-	if resp == nil {
-		return fmt.Errorf("%v - Order %v failed to cancel", b.Name, orderID)
-	}
-	var responseData []interface{}
-	err = json.Unmarshal(resp, &responseData)
-	if err != nil {
-		return err
-	}
-	responseOrderData := responseData[2].([]interface{})
-	errCode := responseOrderData[6].(string)
-	var errorMessage string
-	if responseOrderData[7] != nil {
-		errorMessage = responseOrderData[7].(string)
-	}
-	if strings.EqualFold(errCode, wsError) {
-		return errors.New(b.Name + " - " + errCode + ": " + errorMessage)
-	}
-
-	return nil
-}
-
-func makeRequestInterface(channelName string, data interface{}) []interface{} {
-	return []interface{}{0, channelName, nil, data}
-}
 
 func validateCRC32(book *orderbook.Base, token int) error {
 	// Order ID's need to be sub-sorted in ascending order, this needs to be
@@ -1405,7 +1150,7 @@ func (b *Whitebit) wsGetExecutedOrders(orderID int64, pair string, limit, offset
 	//	return orders, fmt.Errorf("%v - wsGetOpenOrders failed", b.Name)
 	//}
 
-	fmt.Printf("%s WWW: %+v\n", pair, string(resp))
+	//fmt.Printf("%s WWW: %+v\n", pair, string(resp))
 
 	var responseData WsOrdersExecuted
 	err = json.Unmarshal(resp, &responseData)
