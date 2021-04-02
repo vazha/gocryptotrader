@@ -3,7 +3,7 @@ package okcoin
 import (
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/exchanges/okgroup"
+	"github.com/vazha/gocryptotrader/exchanges/okgroup"
 )
 
 const (

@@ -3,8 +3,8 @@ package exchangerates
 import (
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/currency/forexprovider/base"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
+	"github.com/vazha/gocryptotrader/currency/forexprovider/base"
+	"github.com/vazha/gocryptotrader/exchanges/request"
 )
 
 const (

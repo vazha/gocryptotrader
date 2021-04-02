@@ -4,8 +4,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/exchanges/order"
 )
 
 var (

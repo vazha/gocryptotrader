@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/engine"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/engine"
+	"github.com/vazha/gocryptotrader/exchanges/asset"
+	"github.com/vazha/gocryptotrader/exchanges/kline"
+	"github.com/vazha/gocryptotrader/exchanges/order"
 )
 
 // change these if you wish to test another exchange and/or currency pair

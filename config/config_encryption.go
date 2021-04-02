@@ -11,8 +11,8 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/common/crypto"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/common/crypto"
 	"golang.org/x/crypto/scrypt"
 )
 

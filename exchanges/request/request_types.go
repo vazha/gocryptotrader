@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common/timedmutex"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/nonce"
+	"github.com/vazha/gocryptotrader/common/timedmutex"
+	"github.com/vazha/gocryptotrader/exchanges/nonce"
 )
 
 // Const vars for rate limiter

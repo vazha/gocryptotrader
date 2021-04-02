@@ -3,7 +3,7 @@ package binance
 import (
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
+	"github.com/vazha/gocryptotrader/exchanges/order"
 )
 
 // Response holds basic binance api response data

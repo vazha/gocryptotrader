@@ -1,8 +1,8 @@
 package wrappers
 
 import (
-	"github.com/thrasher-corp/gocryptotrader/gctscript/modules"
-	"github.com/thrasher-corp/gocryptotrader/gctscript/wrappers/validator"
+	"github.com/vazha/gocryptotrader/gctscript/modules"
+	"github.com/vazha/gocryptotrader/gctscript/wrappers/validator"
 )
 
 // GetWrapper returns the instance of each wrapper to use

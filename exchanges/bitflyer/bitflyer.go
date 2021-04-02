@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
+	"github.com/vazha/gocryptotrader/currency"
+	exchange "github.com/vazha/gocryptotrader/exchanges"
+	"github.com/vazha/gocryptotrader/exchanges/request"
 )
 
 const (

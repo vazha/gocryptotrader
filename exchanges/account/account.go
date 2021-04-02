@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/gofrs/uuid"
-	"github.com/thrasher-corp/gocryptotrader/dispatch"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
+	"github.com/vazha/gocryptotrader/dispatch"
+	"github.com/vazha/gocryptotrader/exchanges/asset"
 )
 
 func init() {

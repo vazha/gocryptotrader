@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/log"
+	"github.com/vazha/gocryptotrader/log"
 )
 
 var c Coinmarketcap

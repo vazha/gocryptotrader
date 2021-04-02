@@ -9,16 +9,16 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/common/convert"
-	"github.com/thrasher-corp/gocryptotrader/core"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
-	"github.com/thrasher-corp/gocryptotrader/portfolio/withdraw"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/common/convert"
+	"github.com/vazha/gocryptotrader/core"
+	"github.com/vazha/gocryptotrader/currency"
+	exchange "github.com/vazha/gocryptotrader/exchanges"
+	"github.com/vazha/gocryptotrader/exchanges/asset"
+	"github.com/vazha/gocryptotrader/exchanges/kline"
+	"github.com/vazha/gocryptotrader/exchanges/order"
+	"github.com/vazha/gocryptotrader/exchanges/stream"
+	"github.com/vazha/gocryptotrader/portfolio/withdraw"
 )
 
 // Please supply you own test keys here for due diligence testing.

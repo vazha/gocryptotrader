@@ -1,6 +1,6 @@
 package gemini
 
-import "github.com/thrasher-corp/gocryptotrader/currency"
+import "github.com/vazha/gocryptotrader/currency"
 
 const (
 	marketDataLevel2 = "l2"

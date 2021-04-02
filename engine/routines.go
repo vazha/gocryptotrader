@@ -7,14 +7,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/stats"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/stream"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
-	"github.com/thrasher-corp/gocryptotrader/log"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/exchanges/order"
+	"github.com/vazha/gocryptotrader/exchanges/orderbook"
+	"github.com/vazha/gocryptotrader/exchanges/stats"
+	"github.com/vazha/gocryptotrader/exchanges/stream"
+	"github.com/vazha/gocryptotrader/exchanges/ticker"
+	"github.com/vazha/gocryptotrader/log"
 )
 
 func printCurrencyFormat(price float64) string {

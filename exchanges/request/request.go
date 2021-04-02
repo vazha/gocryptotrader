@@ -14,10 +14,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common/timedmutex"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/mock"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/nonce"
-	"github.com/thrasher-corp/gocryptotrader/log"
+	"github.com/vazha/gocryptotrader/common/timedmutex"
+	"github.com/vazha/gocryptotrader/exchanges/mock"
+	"github.com/vazha/gocryptotrader/exchanges/nonce"
+	"github.com/vazha/gocryptotrader/log"
 )
 
 // New returns a new Requester

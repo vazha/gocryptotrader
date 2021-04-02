@@ -9,9 +9,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/thrasher-corp/gocryptotrader/config"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/mock"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/sharedtestvalues"
+	"github.com/vazha/gocryptotrader/config"
+	"github.com/vazha/gocryptotrader/exchanges/mock"
+	"github.com/vazha/gocryptotrader/exchanges/sharedtestvalues"
 )
 
 const mockfile = "../../testdata/http_mock/localbitcoins/localbitcoins.json"

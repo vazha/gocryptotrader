@@ -9,13 +9,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/thrasher-corp/gocryptotrader/common/convert"
-	"github.com/thrasher-corp/gocryptotrader/common/crypto"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
-	"github.com/thrasher-corp/gocryptotrader/portfolio/withdraw"
+	"github.com/vazha/gocryptotrader/common/convert"
+	"github.com/vazha/gocryptotrader/common/crypto"
+	"github.com/vazha/gocryptotrader/currency"
+	exchange "github.com/vazha/gocryptotrader/exchanges"
+	"github.com/vazha/gocryptotrader/exchanges/kline"
+	"github.com/vazha/gocryptotrader/exchanges/request"
+	"github.com/vazha/gocryptotrader/portfolio/withdraw"
 )
 
 const (

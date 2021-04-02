@@ -5,14 +5,14 @@ import (
 	"time"
 
 	objects "github.com/d5/tengo/v2"
-	"github.com/thrasher-corp/gocryptotrader/common"
-	"github.com/thrasher-corp/gocryptotrader/currency"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
-	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
-	"github.com/thrasher-corp/gocryptotrader/gctscript/modules/ta/indicators"
-	"github.com/thrasher-corp/gocryptotrader/gctscript/wrappers"
-	"github.com/thrasher-corp/gocryptotrader/portfolio/withdraw"
+	"github.com/vazha/gocryptotrader/common"
+	"github.com/vazha/gocryptotrader/currency"
+	"github.com/vazha/gocryptotrader/exchanges/asset"
+	"github.com/vazha/gocryptotrader/exchanges/kline"
+	"github.com/vazha/gocryptotrader/exchanges/order"
+	"github.com/vazha/gocryptotrader/gctscript/modules/ta/indicators"
+	"github.com/vazha/gocryptotrader/gctscript/wrappers"
+	"github.com/vazha/gocryptotrader/portfolio/withdraw"
 )
 
 var exchangeModule = map[string]objects.Object{
