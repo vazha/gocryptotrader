@@ -420,6 +420,7 @@ func (b *Whitebit) UpdateAccountInfo(assetType asset.Item) (account.Holdings, er
 	Id := time.Now().UnixNano() / 1000
 	var getByWsOK bool
 	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
+		fmt.Println("GET AUTH ACC")
 		accountBalance, err =  b.wsGetAccountBalance(Id, nil)
 		if err != nil {
 			log.Errorf(log.ExchangeSys,
@@ -432,8 +433,10 @@ func (b *Whitebit) UpdateAccountInfo(assetType asset.Item) (account.Holdings, er
 	}
 
 	if !getByWsOK {
+		fmt.Println("GET NON AUTH ACC")
 		accountBalance, err = b.GetAccountBalance()
 		if err != nil {
+			fmt.Println("GET NON AUTH ACC FUCK")
 			return response, err
 		}
 	}
@@ -659,7 +662,7 @@ func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType as
 				break
 			} else {
 				if len(resp) == 0 { // if no orders found
-					break
+					return orderDetail, fmt.Errorf("no closed orders found")
 				}
 
 				for i := range resp {
@@ -704,10 +707,11 @@ func (b *Whitebit) GetOrderInfo(orderID string, pair currency.Pair, assetType as
 				}
 
 				if len(resp) < int(limit) { // if num of orders less than limit - no reason to do next request
-					break
+					return orderDetail, fmt.Errorf("no closed order found")
 				}
 			}
 		}
+		return orderDetail, fmt.Errorf("no closed order found")
 	}
 
 	// REST attempt
@@ -930,7 +934,7 @@ func (b *Whitebit) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail,
 			return nil, err
 		} else {
 			if len(resp) == 0 {
-				return nil, fmt.Errorf("no orders found")
+				return orders, nil//fmt.Errorf("no orders found")
 			}
 
 			for i := range resp {
