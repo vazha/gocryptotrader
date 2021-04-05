@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	cryptocomWebsocket      = "wss://stream.crypto.com/v2"
-	cryptocomAuthWebsocket  = "wss://uat-stream.3ona.co/v2/user"
+	cryptocomWebsocket      = "wss://stream.crypto.com/v2/market"
+	cryptocomAuthWebsocket  = "wss://stream.crypto.com/v2/user" // "wss://uat-stream.3ona.co/v2/user"
 	cryptocomWebsocketTimer = time.Second * 57
 )
 
@@ -67,9 +67,6 @@ func (c *Cryptocom) WsConnect() error {
 	}
 
 	//time.Sleep(time.Second)
-	//err = c.GetWebsocketToken()
-	//fmt.Println("GetWebsocketToken:", err)
-
 	return nil
 }
 
@@ -438,11 +435,6 @@ func (c *Cryptocom) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription
 		return nil, err
 	}
 	var subscriptions []stream.ChannelSubscription
-	if c.Websocket.CanUseAuthenticatedEndpoints() {
-		subscriptions = append(subscriptions, stream.ChannelSubscription{
-			Channel: "notificationApi",
-		})
-	}
 	for i := range channels {
 		for j := range pairs {
 			subscriptions = append(subscriptions, stream.ChannelSubscription{
@@ -451,6 +443,18 @@ func (c *Cryptocom) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription
 				Asset:    asset.Spot,
 			})
 		}
+	}
+	return subscriptions, nil
+}
+
+// GenerateAuthenticatedSubscriptions Adds default subscriptions to auth websocket
+func (c *Cryptocom) GenerateAuthenticatedSubscriptions() ([]stream.ChannelSubscription, error) {
+	var channels = []string{"user.balance"}
+	var subscriptions []stream.ChannelSubscription
+	for i := range channels {
+		subscriptions = append(subscriptions, stream.ChannelSubscription{
+			Channel: channels[i],
+		})
 	}
 	return subscriptions, nil
 }

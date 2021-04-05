@@ -28,7 +28,7 @@ type Cryptocom struct {
 }
 
 const (
-	cryptocomAPIURL         = "https://uat-api.3ona.co" //"https://api.crypto.com"
+	cryptocomAPIURL         = "https://api.crypto.com" // "https://uat-api.3ona.co" //"https://api.crypto.com"
 	cryptocomSPOTAPIPath    = "/v2/"
 	cryptocomFuturesAPIPath = "/v2/"
 

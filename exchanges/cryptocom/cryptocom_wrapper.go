@@ -199,6 +199,7 @@ func (c *Cryptocom) Setup(exch *config.ExchangeConfig) error {
 		Subscriber:                       c.Subscribe,
 		UnSubscriber:                     c.Unsubscribe,
 		GenerateSubscriptions:            c.GenerateDefaultSubscriptions,
+		GenerateAuthenticatedSubscriptions: c.GenerateAuthenticatedSubscriptions,
 		Features:                         &c.Features.Supports.WebsocketCapabilities,
 		OrderbookBufferLimit:             exch.OrderbookConfig.WebsocketBufferLimit,
 		BufferEnabled:                    exch.OrderbookConfig.WebsocketBufferEnabled,
@@ -215,6 +216,7 @@ func (c *Cryptocom) Setup(exch *config.ExchangeConfig) error {
 	err = c.Websocket.SetupNewConnection(stream.ConnectionSetup{
 		ResponseCheckTimeout: exch.WebsocketResponseCheckTimeout,
 		ResponseMaxLimit:     exch.WebsocketResponseMaxLimit,
+		URL: cryptocomWebsocket,
 	})
 	if err != nil {
 		return err

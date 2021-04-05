@@ -754,8 +754,9 @@ func (bot *Engine) GetAllEnabledExchangeAccountInfo() AllEnabledExchangeAccounts
 			accountHoldings, err := exchanges[x].FetchAccountInfo(assetTypes[y])
 			if err != nil {
 				log.Errorf(log.ExchangeSys,
-					"Error encountered retrieving exchange account info for %s. Error %s\n",
+					"Error encountered retrieving exchange account info for %s (%s). Error %s\n",
 					exchanges[x].GetName(),
+					assetTypes[y],
 					err)
 				continue
 			}
