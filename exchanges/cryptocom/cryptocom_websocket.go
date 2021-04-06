@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/vazha/gocryptotrader/common"
 	"github.com/vazha/gocryptotrader/exchanges/ticker"
 	"github.com/vazha/gocryptotrader/log"
 	"net/http"
@@ -27,6 +28,8 @@ const (
 	cryptocomAuthWebsocket  = "wss://stream.crypto.com/v2/user" // "wss://uat-stream.3ona.co/v2/user"
 	cryptocomWebsocketTimer = time.Second * 57
 )
+
+var authenticatedChannels = []string{"user.balance"}
 
 // WsConnect connects the websocket client
 func (c *Cryptocom) WsConnect() error {
@@ -449,11 +452,10 @@ func (c *Cryptocom) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription
 
 // GenerateAuthenticatedSubscriptions Adds default subscriptions to auth websocket
 func (c *Cryptocom) GenerateAuthenticatedSubscriptions() ([]stream.ChannelSubscription, error) {
-	var channels = []string{"user.balance"}
 	var subscriptions []stream.ChannelSubscription
-	for i := range channels {
+	for i := range authenticatedChannels {
 		subscriptions = append(subscriptions, stream.ChannelSubscription{
-			Channel: channels[i],
+			Channel: authenticatedChannels[i],
 		})
 	}
 	return subscriptions, nil
@@ -463,17 +465,32 @@ func (c *Cryptocom) GenerateAuthenticatedSubscriptions() ([]stream.ChannelSubscr
 func (c *Cryptocom) Subscribe(channelsToSubscribe []stream.ChannelSubscription) error {
 	var sub wsSub
 	sub.Method = "subscribe"
-	var ch []string
+	var ch, authCh []string
 	for i := range channelsToSubscribe {
 		//sub.Params.Channels = append(sub.Params.Channels, channelsToSubscribe[i].Channel)
-		ch = append(ch, channelsToSubscribe[i].Channel)
+		if common.StringDataContains(authenticatedChannels, channelsToSubscribe[i].Channel) {
+			authCh = append(authCh, channelsToSubscribe[i].Channel) // authenticated channels
+		}else{
+			ch = append(ch, channelsToSubscribe[i].Channel)
+		}
+	}
+
+	if len(authCh) > 0 {
+		sub.Params = map[string]interface{}{
+			"channels": authCh,
+		}
+		sub.Nonce = time.Now().Unix()
+
+		err := c.Websocket.AuthConn.SendJSONMessage(sub)
+		if err != nil {
+			return err
+		}
 	}
 
 	p := map[string]interface{}{
 		"channels": ch,
 	}
 	sub.Params = p
-
 	sub.Nonce = time.Now().Unix()
 
 	err := c.Websocket.Conn.SendJSONMessage(sub)
@@ -489,20 +506,32 @@ func (c *Cryptocom) Unsubscribe(channelsToUnsubscribe []stream.ChannelSubscripti
 	var unSub wsSub
 	unSub.Method = "unsubscribe"
 
-	var ch []string
+	var ch, authCh []string
 	for i := range channelsToUnsubscribe {
 		//sub.Params.Channels = append(sub.Params.Channels, channelsToSubscribe[i].Channel)
-		ch = append(ch, channelsToUnsubscribe[i].Channel)
+		if common.StringDataContains(authenticatedChannels, channelsToUnsubscribe[i].Channel) {
+			authCh = append(authCh, channelsToUnsubscribe[i].Channel) // authenticated channels
+		}else{
+			ch = append(ch, channelsToUnsubscribe[i].Channel)
+		}
 	}
 
-	//for i := range channelsToUnsubscribe {
-	//	unSub.Params.Channels = append(unSub.Params.Channels,
-	//		channelsToUnsubscribe[i].Channel)
-	//}
-	p := map[string]interface{}{
+	if len(authCh) > 0 {
+		unSub.Nonce = time.Now().Unix()
+		unSub.Params = map[string]interface{}{
+			"channels": authCh,
+		}
+
+		err := c.Websocket.AuthConn.SendJSONMessage(unSub)
+		if err != nil {
+			return err
+		}
+	}
+
+	unSub.Nonce = time.Now().Unix()
+	unSub.Params = map[string]interface{}{
 		"channels": ch,
 	}
-	unSub.Params = p
 
 	err := c.Websocket.Conn.SendJSONMessage(unSub)
 	if err != nil {

@@ -877,7 +877,7 @@ func (w *Websocket) SubscribeToChannels(channels []ChannelSubscription) error {
 		return fmt.Errorf("%s websocket: cannot subscribe no channels supplied",
 			w.exchangeName)
 	}
-fmt.Println("SubscribeToChannels:", channels)
+
 	w.subscriptionMutex.Lock()
 	defer w.subscriptionMutex.Unlock()
 	for x := range channels {

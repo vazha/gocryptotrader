@@ -7,7 +7,7 @@ import (
 
 const (
 	// Default order type is good till cancel (or filled)
-	goodTillCancel = "GTC"
+	goodTillCancel = "GOOD_TILL_CANCEL"
 
 	orderInserted  = 2
 	orderCancelled = 6
@@ -351,7 +351,7 @@ type OrderActive struct {
 	Side  string  `json:"side"`
 	Price  float64  `json:"price"`
 	Quantity  float64  `json:"quantity"`
-	orderId  string  `json:"order_id"`
+	OrderId  string  `json:"order_id"`
 	ClientOid  string  `json:"client_oid"`
 	CreateTime  int64  `json:"create_time"`
 	UpdateTime  int64  `json:"update_time"`
@@ -377,7 +377,12 @@ type GetOpenOrders struct {
 }
 
 // CancelOrder stores slice of orders
-type CancelOrder []Order
+//type CancelOrder []Order
+type CancelOrder struct {
+	ID     int64  `json:"id"`
+	Method string `json:"method"`
+	Code   int64  `json:"code"`
+}
 
 // Order stores information for a single order
 type Order struct {

@@ -520,12 +520,18 @@ func (c *Cryptocom) SubmitOrder(s *order.Submit) (order.SubmitResponse, error) {
 		//return resp, errors.New("order outside of limits")
 	}
 
-	r, err := c.CreateOrder(s.ClientID, 0.0,
+	r, err := c.CreateOrder(
+		s.ClientID,
+		0.0,
 		false,
-		s.Price, s.Side.String(), s.Amount, 0, 0,
-		fPair.String(), goodTillCancel,
-		0.0, s.TriggerPrice,
-		"", s.Type.String())
+		s.Price,
+		s.Side.String(),
+		s.Amount,
+		fPair.String(),
+		goodTillCancel,
+		s.TriggerPrice,
+		s.Type.String(),
+		)
 	if err != nil {
 		return resp, err
 	}
@@ -559,6 +565,7 @@ func (c *Cryptocom) CancelOrder(o *order.Cancel) error {
 
 	_, err = c.CancelExistingOrder(o.ID, fPair.String())
 	if err != nil {
+		fmt.Println("CancelExistingOrder:", err)
 		return err
 	}
 
@@ -571,8 +578,16 @@ func (c *Cryptocom) CancelBatchOrders(o []order.Cancel) (order.CancelBatchRespon
 }
 
 // CancelAllOrders cancels all orders associated with a currency pair
-func (c *Cryptocom) CancelAllOrders(orderCancellation *order.Cancel) (order.CancelAllResponse, error) {
-	return order.CancelAllResponse{}, common.ErrNotYetImplemented
+func (c *Cryptocom) CancelAllOrders(o *order.Cancel) (order.CancelAllResponse, error) {
+	//fPair, err := c.FormatExchangeCurrency(o.Pair,
+	//	o.AssetType)
+	//if err != nil {
+	//	return order.CancelAllResponse{}, err
+	//}
+
+	_, err := c.CancelAllExistingOrders("LTC_USDT") // fPair.String()
+
+	return order.CancelAllResponse{}, err
 }
 
 func orderIntToType(i int) order.Type {
@@ -602,7 +617,7 @@ func (c *Cryptocom) GetOrderInfo(orderID string, pair currency.Pair, assetType a
 	}
 
 	for i := range o {
-		if o[i].orderId != orderID {
+		if o[i].OrderId != orderID {
 			continue
 		}
 
@@ -621,7 +636,7 @@ func (c *Cryptocom) GetOrderInfo(orderID string, pair currency.Pair, assetType a
 		}
 		od.Exchange = c.Name
 		od.Amount = o[i].Quantity
-		od.ID = o[i].orderId
+		od.ID = o[i].OrderId
 		od.Date = time.Unix(o[i].UpdateTime, 0)
 		od.Side = side
 
@@ -731,7 +746,7 @@ func (c *Cryptocom) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail
 
 		for i := range resp {
 			var side = order.Buy
-			if strings.EqualFold(resp[i].Side, order.Ask.String()) {
+			if strings.EqualFold(resp[i].Side, order.Sell.String()) {
 				side = order.Sell
 			}
 
@@ -748,11 +763,13 @@ func (c *Cryptocom) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail
 				Pair:     p,
 				Exchange: c.Name,
 				Amount:   resp[i].Quantity,
-				ID:       resp[i].orderId,
-				Date:     time.Unix(resp[i].UpdateTime, 0),
+				ID:       resp[i].OrderId,
+				Date:     time.Unix(resp[i].CreateTime / 1000, 0),
 				Side:     side,
 				Price:    resp[i].Price,
 				Status:   order.Status(resp[i].Status),
+				ClientOrderID: resp[i].ClientOid,
+				LastUpdated: time.Unix(resp[i].UpdateTime / 1000, 0),
 			}
 
 			if resp[i].Type == "LIMIT" {
@@ -761,38 +778,40 @@ func (c *Cryptocom) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail
 				openOrder.Type = order.Market
 			}
 
-			fills, err := c.TradeHistory(
-				"",
-				time.Time{}, time.Time{},
-				0, 0, 0,
-				false,
-				"", resp[i].orderId)
-			if err != nil {
-				log.Errorf(log.ExchangeSys,
-					"%s: Unable to get order fills for orderID %s",
-					c.Name,
-					resp[i].orderId)
-				continue
-			}
+			//fmt.Printf("resp: %+v\n", resp[i])
+			//fmt.Printf("openOrder: %+v\n", openOrder)
+			//fills, err := c.TradeHistory(
+			//	"",
+			//	time.Time{}, time.Time{},
+			//	0, 0, 0,
+			//	false,
+			//	"", resp[i].orderId)
+			//if err != nil {
+			//	log.Errorf(log.ExchangeSys,
+			//		"%s: Unable to get order fills for orderID %s",
+			//		c.Name,
+			//		resp[i].orderId)
+			//	continue
+			//}
 
-			for i := range fills {
-				createdAt, err := parseOrderTime(fills[i].Timestamp)
-				if err != nil {
-					log.Errorf(log.ExchangeSys,
-						"%s GetActiveOrders unable to parse time: %s\n",
-						c.Name,
-						err)
-				}
-				openOrder.Trades = append(openOrder.Trades, order.TradeHistory{
-					Timestamp: createdAt,
-					TID:       fills[i].TradeID,
-					Price:     fills[i].Price,
-					Amount:    fills[i].Size,
-					Exchange:  c.Name,
-					Side:      order.Side(fills[i].Side),
-					Fee:       fills[i].FeeAmount,
-				})
-			}
+			//for i := range fills {
+			//	createdAt, err := parseOrderTime(fills[i].Timestamp)
+			//	if err != nil {
+			//		log.Errorf(log.ExchangeSys,
+			//			"%s GetActiveOrders unable to parse time: %s\n",
+			//			c.Name,
+			//			err)
+			//	}
+			//	openOrder.Trades = append(openOrder.Trades, order.TradeHistory{
+			//		Timestamp: createdAt,
+			//		TID:       fills[i].TradeID,
+			//		Price:     fills[i].Price,
+			//		Amount:    fills[i].Size,
+			//		Exchange:  c.Name,
+			//		Side:      order.Side(fills[i].Side),
+			//		Fee:       fills[i].FeeAmount,
+			//	})
+			//}
 			orders = append(orders, openOrder)
 		}
 	}
@@ -800,6 +819,7 @@ func (c *Cryptocom) GetActiveOrders(req *order.GetOrdersRequest) ([]order.Detail
 	order.FilterOrdersByType(&orders, req.Type)
 	//order.FilterOrdersByTickRange(&orders, req.StartTicks, req.EndTicks)
 	order.FilterOrdersBySide(&orders, req.Side)
+	//fmt.Println("OOO", orders)
 	return orders, nil
 }
 

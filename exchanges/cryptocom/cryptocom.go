@@ -51,9 +51,7 @@ const (
 	cryptocomOrder            = "private/create-order"
 	cryptocomCancelOrder      = "private/cancel-order"
 	cryptocomCancelAllOrders = "private/cancel-all-orders"
-	cryptocomPegOrder         = "order/peg"
 	cryptocomPendingOrders    = "private/get-open-orders"
-	cryptocomCancelAllAfter   = "order/cancelAllAfter"
 	cryptocomWsAuth           = "public/auth"
 )
 
@@ -230,40 +228,41 @@ func (c *Cryptocom) WalletWithdrawal(currency, address, tag, amount string) (Wit
 }
 
 // CreateOrder creates an order
-func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bool, price float64, side string, size, stealth, stopPrice float64, symbol, timeInForce string, trailValue, triggerPrice float64, txType, orderType string) (CreateOrder, error) {
+func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bool, price float64, side string, size float64, symbol, timeInForce string, triggerPrice float64, orderType string) (CreateOrder, error) {
 	req := make(map[string]interface{})
-	if clOrderID != "" {
-		req["client_oid"] = clOrderID
-	}
-	if deviation > 0.0 {
-		req["notional"] = deviation
-	}
-	//if postOnly {
-	//	req["postOnly"] = postOnly
-	//}
-	if price > 0.0 {
-		req["price"] = price
+	if symbol != "" {
+		req["instrument_name"] = symbol
 	}
 	if side != "" {
 		req["side"] = side
 	}
+	if orderType != "" {
+		req["type"] = orderType
+	}
+	if price > 0.0 {
+		req["price"] = price
+	}
 	if size > 0.0 {
 		req["quantity"] = size
 	}
-	if symbol != "" {
-		req["instrument_name"] = symbol
+	if deviation > 0.0 {
+		req["notional"] = deviation
+	}
+	if clOrderID != "" {
+		req["client_oid"] = clOrderID
 	}
 	if timeInForce != "" {
-		//req["time_in_force"] = timeInForce
+		req["time_in_force"] = timeInForce
+	}
+	if postOnly {
+		req["exec_inst"] = postOnly
 	}
 	if triggerPrice > 0.0 {
 		req["trigger_price"] = triggerPrice
 	}
-	if orderType != "" {
-		req["type"] = orderType
-	}
 
 	var r CreateOrderResp
+	fmt.Printf("ORDER: %+v\n", req)
 	return r.Result, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomOrder, true, url.Values{}, req, &r, orderFunc)
 }
 
@@ -294,30 +293,32 @@ func (c *Cryptocom) CancelExistingOrder(orderID, symbol string) (CancelOrder, er
 	//req := url.Values{}
 	req := make(map[string]interface{})
 	if orderID == "" {
-		return nil, fmt.Errorf("orderID missed")
+		return co, fmt.Errorf("orderID missed")
 	}
 
 	if symbol == "" {
-		return nil, fmt.Errorf("symbol missed")
+		return co, fmt.Errorf("symbol missed")
 	}
 
 	req["order_id"] = orderID
 	req["instrument_name"] = symbol
 
-	return co, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomCancelOrder, true, nil, req, &c, orderFunc)
+	return co, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomCancelOrder, true, nil, req, &co, orderFunc)
 }
 
-// CancelExistingOrder cancels an order
+// CancelAllExistingOrders cancels an order
 func (c *Cryptocom) CancelAllExistingOrders(symbol string) (CancelOrder, error) {
 	var co CancelOrder
 	req := make(map[string]interface{})
 	if symbol == "" {
-		return nil, fmt.Errorf("symbol missed")
+		return co, fmt.Errorf("symbol missed")
 	}
 
 	req["instrument_name"] = symbol
 
-	return co, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomCancelAllOrders, true, nil, req, &c, orderFunc)
+	err := c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomCancelAllOrders, true, nil, req, &co, orderFunc)
+fmt.Println("CancelAllExistingOrders:", err)
+	return co, err
 }
 
 // TradeHistory returns previous trades on exchange
@@ -461,8 +462,8 @@ func (c *Cryptocom) SendAuthenticatedHTTPRequest(ep exchange.URL, method, endp s
 		Sig: crypto.HexEncodeToString(hmac),
 	}
 
-	//fmt.Println("nonce", nonce)
-	//fmt.Println("auth:", endp + strconv.Itoa(int(id))+ c.API.Credentials.Key + paramsString + fmt.Sprint(nonce))
+	fmt.Println("nonce", nonce)
+	fmt.Println("auth:", endp + strconv.Itoa(int(id))+ c.API.Credentials.Key + paramsString + fmt.Sprint(nonce))
 
 	reqPayload, err := json.Marshal(r)
 	if err != nil {
