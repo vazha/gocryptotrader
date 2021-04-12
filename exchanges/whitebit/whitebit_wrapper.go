@@ -420,7 +420,7 @@ func (b *Whitebit) UpdateAccountInfo(assetType asset.Item) (account.Holdings, er
 	Id := time.Now().UnixNano() / 1000
 	var getByWsOK bool
 	if b.Websocket.CanUseAuthenticatedWebsocketForWrapper() {
-		fmt.Println("GET AUTH ACC")
+		// fmt.Println("GET AUTH ACC")
 		accountBalance, err =  b.wsGetAccountBalance(Id, nil)
 		if err != nil {
 			log.Errorf(log.ExchangeSys,
@@ -433,10 +433,10 @@ func (b *Whitebit) UpdateAccountInfo(assetType asset.Item) (account.Holdings, er
 	}
 
 	if !getByWsOK {
-		fmt.Println("GET NON AUTH ACC")
+		//fmt.Println("GET NON AUTH ACC")
 		accountBalance, err = b.GetAccountBalance()
 		if err != nil {
-			fmt.Println("GET NON AUTH ACC FUCK")
+			//fmt.Println("GET NON AUTH ACC FUCK")
 			return response, err
 		}
 	}

@@ -29,7 +29,7 @@ const (
 	cryptocomWebsocketTimer = time.Second * 57
 )
 
-var authenticatedChannels = []string{"user.balance"}
+var authenticatedChannels = []string{"user.balance", "user.order"}
 
 // WsConnect connects the websocket client
 func (c *Cryptocom) WsConnect() error {
@@ -90,7 +90,6 @@ func (c *Cryptocom) wsFunnelConnectionData(ws stream.Connection, comms chan stre
 func (c *Cryptocom) WsAuthenticate() error {
 	nonce := time.Now().UnixNano()/int64(time.Millisecond)
 	//time.Sleep(time.Second * 2)
-	//nonce := time.Now().Unix()
 	endpoint := cryptocomWsAuth
 	var id int64 = 0
 	hmac := crypto.GetHMAC(
@@ -107,13 +106,6 @@ func (c *Cryptocom) WsAuthenticate() error {
 		Nonce: nonce,
 	}
 
-	//r := wsAuth{
-	//	ID: 11,
-	//	Method: "public/auth",
-	//	ApiKey: c.API.Credentials.Key,
-	//	Sig: crypto.HexEncodeToString(hmac),
-	//	Nonce: 1587846358253,
-	//}
 	return c.Websocket.AuthConn.SendJSONMessage(r)
 }
 
@@ -135,23 +127,6 @@ func stringToOrderStatus(status string) (order.Status, error) {
 		return order.MarketUnavailable, nil
 	default:
 		return order.UnknownStatus, errors.New(status + " not recognised as order status")
-	}
-}
-
-// wsReadData receives and passes on websocket messages for processing
-func (c *Cryptocom) wsReadData2() {
-	c.Websocket.Wg.Add(1)
-	defer c.Websocket.Wg.Done()
-
-	for {
-		resp := c.Websocket.Conn.ReadMessage()
-		if resp.Raw == nil {
-			return
-		}
-		err := c.wsHandleData(resp)
-		if err != nil {
-			c.Websocket.DataHandler <- err
-		}
 	}
 }
 
@@ -226,6 +201,50 @@ func (c *Cryptocom) wsHandleData(resp stream.Response) error {
 		return nil
 	case result.Method == "public/heartbeat":
 		return c.SendHeartbeat(result.ID, resp.Auth)
+	case result.Result.Channel == "user.order":
+		fmt.Println("user.order:", result.Result.Data)
+		//orders := make(map[string]UserOrderResponse)
+		for i := range result.Result.Data {
+			if data, ok := result.Result.Data[i].(map[string]interface{}); ok {
+				var orderID, orderStatus string
+				var orderReason float64
+				for k, v := range data {
+					switch k {
+					case "status":
+						orderStatus = v.(string)
+					case "reason":
+						orderReason = v.(float64)
+					case"order_id":
+						orderID = v.(string)
+					}
+				}
+
+				//
+				sent := LocalMatcher.IncomingWithData(orderID, UserOrderResponse{
+					OrderId: orderID,
+					Status: orderStatus,
+					Reason: orderReason,
+				})
+
+				if !sent {
+					fmt.Printf("Local matcher IncomingWithData not sent for %s\n", orderID)
+				}
+				//
+
+				//orders[orderID] = UserOrderResponse{
+				//	OrderId: orderID,
+				//	Status: orderStatus,
+				//	Reason: orderReason,
+				//}
+				//
+				//timer := time.NewTimer(time.Second * 3)
+				//select {
+				//case OrderStatus<- orders: // send to REST CreateOrder
+				//case <-timer.C:
+				//	timer.Stop()
+				//}
+			}
+		}
 	case result.Result.Channel == "notificationApi":
 		var notification wsNotification
 		err = json.Unmarshal(respRaw, &notification)

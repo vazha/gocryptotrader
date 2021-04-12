@@ -27,6 +27,8 @@ type Cryptocom struct {
 	exchange.Base
 }
 
+var OrderStatus chan map[string]UserOrderResponse
+
 const (
 	cryptocomAPIURL         = "https://api.crypto.com" // "https://uat-api.3ona.co" //"https://api.crypto.com"
 	cryptocomSPOTAPIPath    = "/v2/"
@@ -46,13 +48,17 @@ const (
 	cryptocomWalletHistory    = "private/get-withdrawal-history"
 	cryptocomWalletAddress    = "user/wallet/address"
 	cryptocomWalletWithdrawal = "private/create-withdrawal"
-	cryptocomExchangeHistory  = "user/trade_history"
+	cryptocomExchangeHistory  = "private/get-order-history"
 	cryptocomUserFee          = "user/fees"
 	cryptocomOrder            = "private/create-order"
 	cryptocomCancelOrder      = "private/cancel-order"
 	cryptocomCancelAllOrders = "private/cancel-all-orders"
 	cryptocomPendingOrders    = "private/get-open-orders"
+	cryptocomOrderDetail      ="private/get-order-detail"
 	cryptocomWsAuth           = "public/auth"
+
+	// Reason Codes
+
 )
 
 // FetchFundingHistory gets funding history
@@ -173,12 +179,6 @@ func (c *Cryptocom) GetTickers(symbol string) (Tickers, error) {
 //	return p, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, path, &p, true, queryFunc)
 //}
 
-// GetServerTime returns the exchanges server time
-func (c *Cryptocom) GetServerTime() (*ServerTime, error) {
-	var s ServerTime
-	return &s, c.SendHTTPRequest(exchange.RestSpot, http.MethodGet, cryptocomTime, &s, true, queryFunc)
-}
-
 // GetWalletInformation returns the users account balance
 func (c *Cryptocom) GetWalletInformation() ([]Bals, error) {
 	var a GetAccountSummary
@@ -228,7 +228,7 @@ func (c *Cryptocom) WalletWithdrawal(currency, address, tag, amount string) (Wit
 }
 
 // CreateOrder creates an order
-func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bool, price float64, side string, size float64, symbol, timeInForce string, triggerPrice float64, orderType string) (CreateOrder, error) {
+func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bool, price float64, side string, size float64, symbol, timeInForce string, triggerPrice float64, orderType string) (vvv CreateOrder, err error) {
 	req := make(map[string]interface{})
 	if symbol != "" {
 		req["instrument_name"] = symbol
@@ -263,11 +263,83 @@ func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bo
 
 	var r CreateOrderResp
 	fmt.Printf("ORDER: %+v\n", req)
-	return r.Result, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomOrder, true, url.Values{}, req, &r, orderFunc)
+	err = c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomOrder, true, url.Values{}, req, &r, orderFunc)
+	if err != nil {
+		return vvv, err
+	}
+
+	vvv = r.Result
+
+	if !c.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) { // if no websocket
+		return vvv, nil
+	}
+
+	m, err := LocalMatcher.set(r.Result.OrderID)
+	if err != nil {
+		return vvv,fmt.Errorf("matcher set fail, unknown state")
+	}
+	defer m.Cleanup()
+
+	fmt.Printf("MATCHER SET: %+v\n", m)
+
+	timer := time.NewTimer(time.Second * 3)
+	select {
+	case payload := <-m.C:
+		fmt.Println("payload read:", payload)
+		switch payload.Status {
+		case "REJECTED":
+			fmt.Println("REJECTED reason:", payload.Reason)
+			return vvv, fmt.Errorf("Insufficient funds")
+		case "ACTIVE":
+			fmt.Println("ACTIVE")
+			vvv.OrderPlaced = true
+		case "FILLED":
+			fmt.Println("FILLED")
+			vvv.OrderPlaced = true
+		case "CANCELED":
+			fmt.Println("CANCELED")
+			//vvv.OrderPlaced = true
+		default:
+			return vvv, fmt.Errorf("default, unknown state")
+		}
+	case <-timer.C:
+		fmt.Println("STOP timer for", r.Result.OrderID)
+		timer.Stop()
+		return vvv, fmt.Errorf("timeout, unknown state")
+	}
+
+	//select {
+	//case payload := <-OrderStatus:
+	//	fmt.Println("payload read:", payload)
+	//	if status, ok := payload[r.Result.OrderID]; ok {
+	//		fmt.Println("found in map:", r.Result.OrderID, status)
+	//		switch status.Status {
+	//		case "REJECTED":
+	//			fmt.Println("REJECTED reason:", status.Reason)
+	//			return vvv, fmt.Errorf("Insufficient funds")
+	//		case "ACTIVE":
+	//			fmt.Println("ACTIVE")
+	//			vvv.OrderPlaced = true
+	//		case "FILLED":
+	//			fmt.Println("FILLED")
+	//			vvv.OrderPlaced = true
+	//		case "CANCELED":
+	//			fmt.Println("CANCELED")
+	//			//vvv.OrderPlaced = true
+	//		default:
+	//
+	//		}
+	//	}
+	//case <-timer.C:
+	//	fmt.Println("STOP timer")
+	//	timer.Stop()
+	//}
+
+	return vvv, nil
 }
 
 // GetOrders returns all pending orders
-func (c *Cryptocom) GetOrders(symbol, orderID, clOrderID string) ([]OrderActive, error) {
+func (c *Cryptocom) GetOrders(symbol, orderID, clOrderID string) ([]Order, error) {
 	//req := url.Values{}
 	//if orderID != "" {
 	//	req.Add("orderID", orderID)
@@ -287,6 +359,18 @@ func (c *Cryptocom) GetOrders(symbol, orderID, clOrderID string) ([]OrderActive,
 	return o.Result.OrderList, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomPendingOrders, true, nil, req, &o, orderFunc)
 }
 
+// GetOrderDetail returns info for specified order_id
+func (c *Cryptocom) GetOrderDetail(orderID string) (DetailResult, error) {
+	if orderID == "" {
+		return DetailResult{}, fmt.Errorf("no orderID passed")
+	}
+
+	req := make(map[string]interface{})
+	req["order_id"] = orderID
+	var o OrderDetail
+	return o.Result, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomOrderDetail, true, nil, req, &o, orderFunc)
+}
+
 // CancelExistingOrder cancels an order
 func (c *Cryptocom) CancelExistingOrder(orderID, symbol string) (CancelOrder, error) {
 	var co CancelOrder
@@ -302,12 +386,41 @@ func (c *Cryptocom) CancelExistingOrder(orderID, symbol string) (CancelOrder, er
 
 	req["order_id"] = orderID
 	req["instrument_name"] = symbol
+	err :=  c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomCancelOrder, true, nil, req, &co, orderFunc)
+	if err != nil {
+		return co, err
+	}
 
-	return co, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomCancelOrder, true, nil, req, &co, orderFunc)
+	if !c.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) { // if no websocket
+		return co, fmt.Errorf("status is: unknown" )
+	}
+
+	timer := time.NewTimer(time.Second * 3)
+	select {
+	case payload := <-OrderStatus:
+		fmt.Println("CancelExistingOrder payload read:", payload)
+		if status, ok := payload[orderID]; ok {
+			fmt.Println("CancelExistingOrder found in map:", orderID, status)
+			switch status.Status {
+			case "CANCELED":
+				fmt.Println(orderID, "CANCELED")
+				co.Success = true
+				return co, nil
+			default:
+				return co, fmt.Errorf("status is: %s", status )
+			}
+		}
+	case <-timer.C:
+		fmt.Println("CancelExistingOrder STOP timer")
+		timer.Stop()
+		return co, fmt.Errorf("no active order found")
+	}
+
+	return co, fmt.Errorf("not success")
 }
 
-// CancelAllExistingOrders cancels an order
-func (c *Cryptocom) CancelAllExistingOrders(symbol string) (CancelOrder, error) {
+// CancelAllOrdersByMarket cancels an order by pair
+func (c *Cryptocom) CancelAllOrdersByMarket(symbol string) (CancelOrder, error) {
 	var co CancelOrder
 	req := make(map[string]interface{})
 	if symbol == "" {
@@ -315,45 +428,61 @@ func (c *Cryptocom) CancelAllExistingOrders(symbol string) (CancelOrder, error) 
 	}
 
 	req["instrument_name"] = symbol
-
 	err := c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomCancelAllOrders, true, nil, req, &co, orderFunc)
-fmt.Println("CancelAllExistingOrders:", err)
-	return co, err
+	if err != nil {
+		return co, err
+	}
+
+	if !c.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) { // if no websocket
+		return co, fmt.Errorf("status is: unknown" )
+	}
+
+	timer := time.NewTimer(time.Second * 3)
+	select {
+	case payload := <-OrderStatus:
+		for k, v := range payload {
+			switch v.Status {
+			case "CANCELED":
+				fmt.Println(k, "CANCELED")
+				co.Success = true
+				return co, nil
+			default:
+				return co, fmt.Errorf("status is: %s", v )
+			}
+		}
+	case <-timer.C:
+		fmt.Println("CancelExistingOrder STOP timer")
+		timer.Stop()
+		return co, fmt.Errorf("no active order found")
+	}
+
+	return co, fmt.Errorf("not success")
 }
 
-// TradeHistory returns previous trades on exchange
-func (c *Cryptocom) TradeHistory(symbol string, start, end time.Time, beforeSerialID, afterSerialID, count int, includeOld bool, clOrderID, orderID string) (TradeHistory, error) {
-	var resp TradeHistory
+// OrderHistory returns list of all orders
+func (c *Cryptocom) OrderHistory(symbol string, start, end time.Time, page, pageSize int) ([]Order, error) {
+	req := make(map[string]interface{})
 	urlValues := url.Values{}
-	if symbol != "" {
-		urlValues.Add("symbol", symbol)
-	}
+
 	if !start.IsZero() && !end.IsZero() {
 		if start.After(end) || end.Before(start) {
-			return resp, errors.New("start and end must both be valid")
+			return nil, errors.New("start and end must both be valid")
 		}
-		urlValues.Add("start", strconv.FormatInt(start.Unix(), 10))
-		urlValues.Add("end", strconv.FormatInt(end.Unix(), 10))
+		req["start_ts"] = strconv.FormatInt(start.Unix(), 10)
+		req["end_ts"] = strconv.FormatInt(end.Unix(), 10)
 	}
-	if beforeSerialID > 0 {
-		urlValues.Add("beforeSerialId", strconv.Itoa(beforeSerialID))
+	if page > 0 {
+		req["page"] = page
 	}
-	if afterSerialID > 0 {
-		urlValues.Add("afterSerialId", strconv.Itoa(afterSerialID))
+	if pageSize > 0 {
+		req["page_size"] = pageSize
 	}
-	if includeOld {
-		urlValues.Add("includeOld", "true")
+	if symbol != "" {
+		req["instrument_name"] = symbol
 	}
-	if count > 0 {
-		urlValues.Add("count", strconv.Itoa(count))
-	}
-	if clOrderID != "" {
-		urlValues.Add("clOrderId", clOrderID)
-	}
-	if orderID != "" {
-		urlValues.Add("orderID", orderID)
-	}
-	return resp, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodGet, cryptocomExchangeHistory, true, urlValues, nil, &resp, queryFunc)
+
+	var response GetOpenOrders
+	return response.Result.OrderList, c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomExchangeHistory, true, urlValues, req, &response, queryFunc)
 }
 
 // SendHTTPRequest sends an HTTP request to the desired endpoint
@@ -462,8 +591,8 @@ func (c *Cryptocom) SendAuthenticatedHTTPRequest(ep exchange.URL, method, endp s
 		Sig: crypto.HexEncodeToString(hmac),
 	}
 
-	fmt.Println("nonce", nonce)
-	fmt.Println("auth:", endp + strconv.Itoa(int(id))+ c.API.Credentials.Key + paramsString + fmt.Sprint(nonce))
+	// fmt.Println("nonce", nonce)
+	// fmt.Println("auth:", endp + strconv.Itoa(int(id))+ c.API.Credentials.Key + paramsString + fmt.Sprint(nonce))
 
 	reqPayload, err := json.Marshal(r)
 	if err != nil {
@@ -471,23 +600,7 @@ func (c *Cryptocom) SendAuthenticatedHTTPRequest(ep exchange.URL, method, endp s
 	}
 	body = bytes.NewBuffer(reqPayload)
 
-
 	//fmt.Println("reqPayload:", string(reqPayload))
-
-	//if req != nil {
-	//
-	//} else {
-	//	hmac = crypto.GetHMAC(
-	//		crypto.HashSHA256,
-	//		[]byte((endpoint + fmt.Sprint(nonce))),
-	//		[]byte(c.API.Credentials.Secret),
-	//	)
-	//	if len(values) > 0 {
-	//		host += "?" + values.Encode()
-	//	}
-	//}
-	//fmt.Println("hmac", hmac)
-	//headers["sign"] = crypto.HexEncodeToString(hmac)
 
 	if c.Verbose {
 		log.Debugf(log.ExchangeSys,
@@ -533,15 +646,8 @@ func (c *Cryptocom) GetFee(feeBuilder *exchange.FeeBuilder) (float64, error) {
 		fee = getInternationalBankDepositFee(feeBuilder.Amount)
 	case exchange.InternationalBankWithdrawalFee:
 		fee = getInternationalBankWithdrawalFee(feeBuilder.Amount)
-	case exchange.OfflineTradeFee:
-		fee = getOfflineTradeFee(feeBuilder.PurchasePrice, feeBuilder.Amount)
 	}
 	return fee, nil
-}
-
-// getOfflineTradeFee calculates the worst case-scenario trading fee
-func getOfflineTradeFee(price, amount float64) float64 {
-	return 0.001 * price * amount
 }
 
 // getInternationalBankDepositFee returns international deposit fee

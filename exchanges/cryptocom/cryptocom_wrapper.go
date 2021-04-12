@@ -33,6 +33,8 @@ const (
 	spotWSURL = "websocketURL"
 )
 
+var LocalMatcher *Match
+
 // GetDefaultConfig returns a default exchange config
 func (c *Cryptocom) GetDefaultConfig() (*config.ExchangeConfig, error) {
 	c.SetDefaults()
@@ -213,6 +215,8 @@ func (c *Cryptocom) Setup(exch *config.ExchangeConfig) error {
 	//	return err
 	//}
 
+	OrderStatus = make(chan map[string]UserOrderResponse)
+
 	err = c.Websocket.SetupNewConnection(stream.ConnectionSetup{
 		ResponseCheckTimeout: exch.WebsocketResponseCheckTimeout,
 		ResponseMaxLimit:     exch.WebsocketResponseMaxLimit,
@@ -255,6 +259,8 @@ func (c *Cryptocom) Run() {
 		log.Errorf(log.ExchangeSys,
 			"%s Failed to update tradable pairs. Error: %s", c.Name, err)
 	}
+
+	LocalMatcher = NewMatch()
 }
 
 // FetchTradablePairs returns a list of the exchanges tradable pairs
@@ -536,7 +542,7 @@ func (c *Cryptocom) SubmitOrder(s *order.Submit) (order.SubmitResponse, error) {
 		return resp, err
 	}
 
-	resp.IsOrderPlaced = true
+	resp.IsOrderPlaced = r.OrderPlaced
 	resp.OrderID = r.OrderID
 
 	if s.Type == order.Market {
@@ -574,109 +580,88 @@ func (c *Cryptocom) CancelOrder(o *order.Cancel) error {
 
 // CancelBatchOrders cancels an orders by their corresponding ID numbers
 func (c *Cryptocom) CancelBatchOrders(o []order.Cancel) (order.CancelBatchResponse, error) {
-	return order.CancelBatchResponse{}, common.ErrNotYetImplemented
+	if len(o) == 0 {
+		return order.CancelBatchResponse{}, fmt.Errorf("no pair passed")
+	}
+
+	fPair, err := c.FormatExchangeCurrency(o[0].Pair,
+		o[0].AssetType)
+	if err != nil {
+		return order.CancelBatchResponse{}, fmt.Errorf("wrong pair format: %v", err)
+	}
+
+	_, err = c.CancelAllOrdersByMarket(fPair.String())
+	return order.CancelBatchResponse{}, err
 }
 
 // CancelAllOrders cancels all orders associated with a currency pair
 func (c *Cryptocom) CancelAllOrders(o *order.Cancel) (order.CancelAllResponse, error) {
-	//fPair, err := c.FormatExchangeCurrency(o.Pair,
-	//	o.AssetType)
-	//if err != nil {
-	//	return order.CancelAllResponse{}, err
-	//}
-
-	_, err := c.CancelAllExistingOrders("LTC_USDT") // fPair.String()
-
-	return order.CancelAllResponse{}, err
-}
-
-func orderIntToType(i int) order.Type {
-	if i == 77 {
-		return order.Market
-	} else if i == 76 {
-		return order.Limit
-	}
-	return order.UnknownType
+	return order.CancelAllResponse{}, common.ErrNotYetImplemented
 }
 
 // GetOrderInfo returns order information based on order ID
 func (c *Cryptocom) GetOrderInfo(orderID string, pair currency.Pair, assetType asset.Item) (order.Detail, error) {
-	o, err := c.GetOrders("", orderID, "")
+	o, err := c.GetOrderDetail(orderID)
 	if err != nil {
 		return order.Detail{}, err
 	}
 
+	fmt.Printf("GetOrderInfo: %+v\n", o)
+
 	var od order.Detail
-	if len(o) == 0 {
-		return od, errors.New("no orders found")
-	}
+	//if o == nil {
+	//	return od, errors.New("no orders found")
+	//}
 
 	format, err := c.GetPairFormat(asset.Spot, false)
 	if err != nil {
 		return order.Detail{}, err
 	}
 
-	for i := range o {
-		if o[i].OrderId != orderID {
-			continue
-		}
-
-		var side = order.Buy
-		if strings.EqualFold(o[i].Side, order.Ask.String()) {
-			side = order.Sell
-		}
-
-		od.Pair, err = currency.NewPairDelimiter(o[i].InstrumentName,
-			format.Delimiter)
-		if err != nil {
-			log.Errorf(log.ExchangeSys,
-				"%s GetOrderInfo unable to parse currency pair: %s\n",
-				c.Name,
-				err)
-		}
-		od.Exchange = c.Name
-		od.Amount = o[i].Quantity
-		od.ID = o[i].OrderId
-		od.Date = time.Unix(o[i].UpdateTime, 0)
-		od.Side = side
-
-		//od.Type = orderIntToType(o[i].Type)
-		if o[i].Type == "LIMIT" {
-			od.Type = order.Limit
-		} else {
-			od.Type = order.Market
-		}
-
-		od.Price = o[i].Price
-		od.Status = order.Status(o[i].Status)
-
-		th, err := c.TradeHistory("",
-			time.Time{}, time.Time{},
-			0, 0, 0,
-			false,
-			"", orderID)
-		if err != nil {
-			return od,
-				fmt.Errorf("unable to get order fills for orderID %s", orderID)
-		}
-
-		for i := range th {
-			createdAt, err := parseOrderTime(th[i].TradeID)
-			if err != nil {
-				log.Errorf(log.ExchangeSys,
-					"%s GetOrderInfo unable to parse time: %s\n", c.Name, err)
-			}
-			od.Trades = append(od.Trades, order.TradeHistory{
-				Timestamp: createdAt,
-				TID:       th[i].TradeID,
-				Price:     th[i].Price,
-				Amount:    th[i].Size,
-				Exchange:  c.Name,
-				Side:      order.Side(th[i].Side),
-				Fee:       th[i].FeeAmount,
-			})
-		}
+	var side = order.Buy
+	if strings.EqualFold(o.OrderInfo.Side, order.Sell.String()) {
+		side = order.Sell
 	}
+
+	od.Pair, err = currency.NewPairDelimiter(o.OrderInfo.InstrumentName,
+		format.Delimiter)
+	if err != nil {
+		log.Errorf(log.ExchangeSys,
+			"%s GetOrderInfo unable to parse currency pair: %s\n",
+			c.Name,
+			err)
+	}
+	od.Exchange = c.Name
+	od.Amount = o.OrderInfo.Quantity
+	od.Cost = o.OrderInfo.CumulativeValue
+	od.ID = o.OrderInfo.OrderId
+	od.ClientOrderID = o.OrderInfo.ClientOid
+	od.Date = time.Unix(o.OrderInfo.CreateTime/ 1000, 0)
+	od.LastUpdated = time.Unix(o.OrderInfo.UpdateTime / 1000, 0)
+	od.Side = side
+
+	if o.OrderInfo.Type == "LIMIT" {
+		od.Type = order.Limit
+	} else {
+		od.Type = order.Market
+	}
+
+	od.Price = o.OrderInfo.AvgPrice
+	od.Status = order.Status(o.OrderInfo.Status)
+
+	for i := range o.TradeList {
+		od.Trades = append(od.Trades, order.TradeHistory{
+			Timestamp: time.Unix(o.TradeList[i].CreateTime, 0),
+			TID:       o.TradeList[i].TradeId,
+			Price:     o.TradeList[i].TradedPrice,
+			Amount:    o.TradeList[i].TradedQuantity,
+			Exchange:  c.Name,
+			Side:      order.Side(o.TradeList[i].Side),
+			Fee:       o.TradeList[i].Fee,
+			FeeAsset: o.TradeList[i].FeeCurrency,
+		})
+	}
+
 	return od, nil
 }
 
@@ -838,48 +823,72 @@ func (c *Cryptocom) GetOrderHistory(getOrdersRequest *order.GetOrdersRequest) ([
 	}
 
 	var resp []order.Detail
-	if len(getOrdersRequest.Pairs) == 0 {
-		var err error
-		getOrdersRequest.Pairs, err = c.GetEnabledPairs(asset.Spot)
+	var pair string
+	if len(getOrdersRequest.Pairs) == 1 {
+		fPair, err := c.FormatExchangeCurrency(getOrdersRequest.Pairs[0], asset.Spot)
 		if err != nil {
 			return nil, err
 		}
+		pair = fPair.String()
 	}
+
 	orderDeref := *getOrdersRequest
-	for x := range orderDeref.Pairs {
-		fPair, err := c.FormatExchangeCurrency(orderDeref.Pairs[x], asset.Spot)
-		if err != nil {
-			return nil, err
-		}
-		currentOrder, err := c.GetOrders(fPair.String(), "", "")
-		if err != nil {
-			return nil, err
-		}
-		for y := range currentOrder {
-			//if !matchType(currentOrder[y].OrderType, orderDeref.Type) {
-			//	continue
-			//}
-			tempOrder := order.Detail{
-				Price:  currentOrder[y].Price,
-				Amount: currentOrder[y].Quantity,
-				Side:   order.Side(currentOrder[y].Side),
-				Pair:   orderDeref.Pairs[x],
-			}
-			switch currentOrder[x].Status {
-			case "STATUS_ACTIVE":
-				tempOrder.Status = order.Active
-			case "ORDER_CANCELLED":
-				tempOrder.Status = order.Cancelled
-			case "ORDER_FULLY_TRANSACTED":
-				tempOrder.Status = order.Filled
-			case "ORDER_PARTIALLY_TRANSACTED":
-				tempOrder.Status = order.PartiallyFilled
-			default:
-				tempOrder.Status = order.UnknownStatus
-			}
-			resp = append(resp, tempOrder)
-		}
+	currentOrder, err := c.OrderHistory(pair, orderDeref.StartTime, orderDeref.EndTime, 0, 0)
+	if err != nil {
+		return nil, err
 	}
+	for y := range currentOrder {
+		format, err := c.GetPairFormat(asset.Spot, false)
+		if err != nil {
+			return nil, err
+		}
+
+		Pair, err := currency.NewPairDelimiter(currentOrder[y].InstrumentName,
+			format.Delimiter)
+		if err != nil {
+			log.Errorf(log.ExchangeSys,
+				"%s GetOrderInfo unable to parse currency pair: %s\n",
+				c.Name,
+				err)
+		}
+
+		var Type order.Type
+		if currentOrder[y].Type == "LIMIT" {
+			Type = order.Limit
+		} else {
+			Type = order.Market
+		}
+
+		tempOrder := order.Detail{
+			Price:  currentOrder[y].AvgPrice,
+			Amount: currentOrder[y].Quantity,
+			Side:   order.Side(currentOrder[y].Side),
+			Pair:   Pair,
+			ID:  currentOrder[y].OrderId,
+			ClientOrderID: currentOrder[y].ClientOid,
+			Date: time.Unix(currentOrder[y].CreateTime/ 1000, 0),
+			LastUpdated: time.Unix(currentOrder[y].UpdateTime/ 1000, 0),
+			Type: Type,
+			Cost: currentOrder[y].CumulativeValue,
+			ExecutedAmount: currentOrder[y].CumulativeQuantity,
+		}
+		switch currentOrder[y].Status {
+		case "ACTIVE":
+			tempOrder.Status = order.Active
+		case "CANCELED":
+			tempOrder.Status = order.Cancelled
+		case "FILLED":
+			tempOrder.Status = order.Filled
+		case "REJECTED":
+			tempOrder.Status = order.Rejected
+		case "EXPIRED":
+			tempOrder.Status = order.Expired
+		default:
+			tempOrder.Status = order.UnknownStatus
+		}
+		resp = append(resp, tempOrder)
+	}
+
 	return resp, nil
 }
 
@@ -1000,8 +1009,6 @@ func (c *Cryptocom) GetHistoricCandlesExtended(pair currency.Pair, a asset.Item,
 				Volume: req[x][5],
 			})
 		}
-	case asset.Futures:
-		return kline.Item{}, common.ErrNotYetImplemented
 	default:
 		return kline.Item{}, fmt.Errorf("asset %v not supported", a.String())
 	}
@@ -1010,6 +1017,7 @@ func (c *Cryptocom) GetHistoricCandlesExtended(pair currency.Pair, a asset.Item,
 	return klineRet, nil
 }
 
+// order size limits
 func (c *Cryptocom) seedOrderSizeLimits() error {
 	//pairs, err := c.GetMarketSummary("", true)
 	//if err != nil {
