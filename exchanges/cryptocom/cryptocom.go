@@ -27,8 +27,6 @@ type Cryptocom struct {
 	exchange.Base
 }
 
-var OrderStatus chan map[string]UserOrderResponse
-
 const (
 	cryptocomAPIURL         = "https://api.crypto.com" // "https://uat-api.3ona.co" //"https://api.crypto.com"
 	cryptocomSPOTAPIPath    = "/v2/"
@@ -38,7 +36,6 @@ const (
 	cryptocomMarketOverview = "public/get-instruments"
 	cryptocomOrderbook      = "public/get-book"
 	cryptocomTrades         = "public/get-trades"
-	cryptocomTime           = "time"
 	cryptocomOHLCV          = "ohlcv"
 	cryptocomPrice          = "public/get-ticker"
 	cryptocomFuturesFunding = "funding_history"
@@ -46,7 +43,6 @@ const (
 	// Authenticated endpoints
 	cryptocomWallet           = "private/get-account-summary"
 	cryptocomWalletHistory    = "private/get-withdrawal-history"
-	cryptocomWalletAddress    = "user/wallet/address"
 	cryptocomWalletWithdrawal = "private/create-withdrawal"
 	cryptocomExchangeHistory  = "private/get-order-history"
 	cryptocomUserFee          = "user/fees"
@@ -229,6 +225,10 @@ func (c *Cryptocom) WalletWithdrawal(currency, address, tag, amount string) (Wit
 
 // CreateOrder creates an order
 func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bool, price float64, side string, size float64, symbol, timeInForce string, triggerPrice float64, orderType string) (vvv CreateOrder, err error) {
+	if !c.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) { // if no websocket
+		return vvv, fmt.Errorf("websocket disabled")
+	}
+
 	req := make(map[string]interface{})
 	if symbol != "" {
 		req["instrument_name"] = symbol
@@ -242,12 +242,15 @@ func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bo
 	if price > 0.0 {
 		req["price"] = price
 	}
-	if size > 0.0 {
-		req["quantity"] = size
+
+	if orderType == "MARKET" && side == "BUY" {
+		req["notional"] = size
+	}else{
+		if size > 0.0 {
+			req["quantity"] = size
+		}
 	}
-	if deviation > 0.0 {
-		req["notional"] = deviation
-	}
+
 	if clOrderID != "" {
 		req["client_oid"] = clOrderID
 	}
@@ -262,7 +265,7 @@ func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bo
 	}
 
 	var r CreateOrderResp
-	fmt.Printf("ORDER: %+v\n", req)
+	fmt.Printf("Cryptocom NEW ORDER: %+v\n", req)
 	err = c.SendAuthenticatedHTTPRequest(exchange.RestSpot, http.MethodPost, cryptocomOrder, true, url.Values{}, req, &r, orderFunc)
 	if err != nil {
 		return vvv, err
@@ -270,19 +273,15 @@ func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bo
 
 	vvv = r.Result
 
-	if !c.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) { // if no websocket
-		return vvv, nil
-	}
-
 	m, err := LocalMatcher.set(r.Result.OrderID)
 	if err != nil {
 		return vvv,fmt.Errorf("matcher set fail, unknown state")
 	}
 	defer m.Cleanup()
 
-	fmt.Printf("MATCHER SET: %+v\n", m)
+	fmt.Printf("MATCHER SET: %+v\n", m.sig)
 
-	timer := time.NewTimer(time.Second * 3)
+	timer := time.NewTimer(time.Second * 6)
 	select {
 	case payload := <-m.C:
 		fmt.Println("payload read:", payload)
@@ -307,33 +306,6 @@ func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bo
 		timer.Stop()
 		return vvv, fmt.Errorf("timeout, unknown state")
 	}
-
-	//select {
-	//case payload := <-OrderStatus:
-	//	fmt.Println("payload read:", payload)
-	//	if status, ok := payload[r.Result.OrderID]; ok {
-	//		fmt.Println("found in map:", r.Result.OrderID, status)
-	//		switch status.Status {
-	//		case "REJECTED":
-	//			fmt.Println("REJECTED reason:", status.Reason)
-	//			return vvv, fmt.Errorf("Insufficient funds")
-	//		case "ACTIVE":
-	//			fmt.Println("ACTIVE")
-	//			vvv.OrderPlaced = true
-	//		case "FILLED":
-	//			fmt.Println("FILLED")
-	//			vvv.OrderPlaced = true
-	//		case "CANCELED":
-	//			fmt.Println("CANCELED")
-	//			//vvv.OrderPlaced = true
-	//		default:
-	//
-	//		}
-	//	}
-	//case <-timer.C:
-	//	fmt.Println("STOP timer")
-	//	timer.Stop()
-	//}
 
 	return vvv, nil
 }
@@ -395,28 +367,31 @@ func (c *Cryptocom) CancelExistingOrder(orderID, symbol string) (CancelOrder, er
 		return co, fmt.Errorf("status is: unknown" )
 	}
 
+	m, err := LocalMatcher.set(orderID)
+	if err != nil {
+		return co, fmt.Errorf("matcher set fail, unknown state")
+	}
+	defer m.Cleanup()
+
+	fmt.Printf("CancelExistingOrder MATCHER SET: %+v\n", m)
+
 	timer := time.NewTimer(time.Second * 3)
 	select {
-	case payload := <-OrderStatus:
+	case payload := <-m.C:
 		fmt.Println("CancelExistingOrder payload read:", payload)
-		if status, ok := payload[orderID]; ok {
-			fmt.Println("CancelExistingOrder found in map:", orderID, status)
-			switch status.Status {
-			case "CANCELED":
-				fmt.Println(orderID, "CANCELED")
-				co.Success = true
-				return co, nil
-			default:
-				return co, fmt.Errorf("status is: %s", status )
-			}
+		switch payload.Status {
+		case "CANCELED":
+			fmt.Println(orderID, "CANCELED")
+			co.Success = true
+			return co, nil
+		default:
+			return co, fmt.Errorf("CancelExistingOrder, status is: %s", payload.Status )
 		}
 	case <-timer.C:
 		fmt.Println("CancelExistingOrder STOP timer")
 		timer.Stop()
 		return co, fmt.Errorf("no active order found")
 	}
-
-	return co, fmt.Errorf("not success")
 }
 
 // CancelAllOrdersByMarket cancels an order by pair
@@ -437,26 +412,30 @@ func (c *Cryptocom) CancelAllOrdersByMarket(symbol string) (CancelOrder, error) 
 		return co, fmt.Errorf("status is: unknown" )
 	}
 
+	signature := time.Now().UnixNano()
+	m, err := LocalMatcher.set(signature)
+	if err != nil {
+		return co, fmt.Errorf("matcher set fail, unknown state")
+	}
+	defer m.Cleanup()
+
 	timer := time.NewTimer(time.Second * 3)
 	select {
-	case payload := <-OrderStatus:
-		for k, v := range payload {
-			switch v.Status {
-			case "CANCELED":
-				fmt.Println(k, "CANCELED")
-				co.Success = true
-				return co, nil
-			default:
-				return co, fmt.Errorf("status is: %s", v )
-			}
+	case payload := <-m.C:
+		fmt.Println("CancelAllOrdersByMarket payload read:", payload)
+		switch payload.Status {
+		case "CANCELED":
+			fmt.Println( "CancelAllOrdersByMarket CANCELED")
+			co.Success = true
+			return co, nil
+		default:
+			return co, fmt.Errorf("CancelAllOrdersByMarket, status is: %s", payload.Status )
 		}
 	case <-timer.C:
-		fmt.Println("CancelExistingOrder STOP timer")
+		fmt.Println("CancelAllOrdersByMarket STOP timer")
 		timer.Stop()
 		return co, fmt.Errorf("no active order found")
 	}
-
-	return co, fmt.Errorf("not success")
 }
 
 // OrderHistory returns list of all orders

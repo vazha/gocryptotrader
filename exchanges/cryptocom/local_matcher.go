@@ -28,24 +28,35 @@ func (m *Match) Incoming(signature interface{}) bool {
 // IncomingWithData matches with requests and takes in the returned payload, to
 // be processed outside of a stream processing routine
 func (m *Match) IncomingWithData(signature interface{}, data UserOrderResponse) bool {
-	m.Lock()
-	defer m.Unlock()
-
 	s := fmt.Sprint(signature)
-	fmt.Printf("MATCHER FOUND: %+v\n", m.m)
-	ch, ok := m.m[s]
-	if ok {
-		timer := time.NewTimer(time.Second * 3)
-		select {
-		case ch <- data:
-		case <-timer.C:
-			fmt.Println("IncomingWithData STOP timer")
-			timer.Stop()
-			return false
+	//fmt.Printf("MATCHERs FOUND: %+v\n", m.m)
+	timer1 := time.NewTimer(time.Second * 6)
+	for { // wait for REST finish
+		m.Lock()
+		ch, ok := m.m[s]
+		m.Unlock()
+		if ok {
+			timer := time.NewTimer(time.Second * 3)
+			select {
+			case ch <- data:
+			case <-timer.C:
+				fmt.Println("IncomingWithData STOP timer for", s)
+				timer.Stop()
+				return false
+			}
+			return true
 		}
-		return true
+
+		select {
+		case <-timer1.C:
+			fmt.Println("IncomingWithData STOP timer1 for", s)
+			timer1.Stop()
+			return false
+		default:
+			time.Sleep(time.Millisecond * 100)
+			//fmt.Println("matcher, waiting rest for ", s)
+		}
 	}
-	return false
 }
 
 // Sets the signature response channel for incoming data
@@ -61,12 +72,12 @@ func (m *Match) set(signature interface{}) (matcher, error) {
 	}
 	// This is buffered so we don't need to wait for receiver.
 	ch = make(chan UserOrderResponse, 1)
-	m.m[signature] = ch
+	m.m[s] = ch
 	m.Unlock()
 
 	return matcher{
 		C:   ch,
-		sig: signature,
+		sig: s,
 		m:   m,
 	}, nil
 }

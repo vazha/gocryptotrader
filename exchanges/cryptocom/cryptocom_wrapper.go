@@ -215,8 +215,6 @@ func (c *Cryptocom) Setup(exch *config.ExchangeConfig) error {
 	//	return err
 	//}
 
-	OrderStatus = make(chan map[string]UserOrderResponse)
-
 	err = c.Websocket.SetupNewConnection(stream.ConnectionSetup{
 		ResponseCheckTimeout: exch.WebsocketResponseCheckTimeout,
 		ResponseMaxLimit:     exch.WebsocketResponseMaxLimit,

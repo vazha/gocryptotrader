@@ -140,19 +140,20 @@ func (c *Cryptocom) wsReadData(comms chan stream.Response) {
 		case <-c.Websocket.ShutdownC:
 			return
 		case resp := <-comms:
-			err := c.wsHandleData(resp)
-			if err != nil {
-				c.Websocket.DataHandler <- fmt.Errorf("%s - unhandled websocket data: %v",
-					c.Name,
-					err)
-			}
+			go func() {
+				err := c.wsHandleData(resp)
+				if err != nil {
+					c.Websocket.DataHandler <- fmt.Errorf("%s - unhandled websocket data: %v",
+						c.Name,
+						err)
+				}
+			}()
 		}
 	}
 }
 
 func (c *Cryptocom) wsHandleData(resp stream.Response) error {
 	respRaw := resp.Raw
-	//type Result map[string]interface{}
 	var result WsSubRead
 	err := json.Unmarshal(respRaw, &result)
 	if err != nil {
@@ -195,7 +196,7 @@ func (c *Cryptocom) wsHandleData(resp stream.Response) error {
 	// fmt.Printf("WSS: %+v\n", result)
 
 	switch {
-	case result.Method == "public/auth": //"public/auth"
+	case result.Method == "public/auth":
 	fmt.Println("public/auth ACCEPTED")
 	case result.Method == "subscribe" && result.Result.Channel == "":
 		return nil
@@ -219,7 +220,6 @@ func (c *Cryptocom) wsHandleData(resp stream.Response) error {
 					}
 				}
 
-				//
 				sent := LocalMatcher.IncomingWithData(orderID, UserOrderResponse{
 					OrderId: orderID,
 					Status: orderStatus,
@@ -227,22 +227,9 @@ func (c *Cryptocom) wsHandleData(resp stream.Response) error {
 				})
 
 				if !sent {
-					fmt.Printf("Local matcher IncomingWithData not sent for %s\n", orderID)
+					//fmt.Printf("Local matcher IncomingWithData not sent for %s\n", orderID)
 				}
-				//
 
-				//orders[orderID] = UserOrderResponse{
-				//	OrderId: orderID,
-				//	Status: orderStatus,
-				//	Reason: orderReason,
-				//}
-				//
-				//timer := time.NewTimer(time.Second * 3)
-				//select {
-				//case OrderStatus<- orders: // send to REST CreateOrder
-				//case <-timer.C:
-				//	timer.Stop()
-				//}
 			}
 		}
 	case result.Result.Channel == "notificationApi":
@@ -389,7 +376,6 @@ func (c *Cryptocom) wsHandleData(resp stream.Response) error {
 		}
 
 		var newOB orderbook.Base
-		//ob := result.Result.Data[0].(Orderbook)
 
 		for i := range ob.Result.Data[0].Asks {
 			if c.orderbookFilter(ob.Result.Data[0].Asks[i][0], ob.Result.Data[0].Asks[i][1]) {
