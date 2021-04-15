@@ -364,7 +364,7 @@ func (c *Cryptocom) CancelExistingOrder(orderID, symbol string) (CancelOrder, er
 	}
 
 	if !c.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) { // if no websocket
-		return co, fmt.Errorf("status is: unknown" )
+		return co, fmt.Errorf("status is: unknown state" )
 	}
 
 	m, err := LocalMatcher.set(orderID)
@@ -409,7 +409,7 @@ func (c *Cryptocom) CancelAllOrdersByMarket(symbol string) (CancelOrder, error) 
 	}
 
 	if !c.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) { // if no websocket
-		return co, fmt.Errorf("status is: unknown" )
+		return co, fmt.Errorf("status is: unknown state" )
 	}
 
 	signature := time.Now().UnixNano()
