@@ -311,12 +311,12 @@ func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bo
 			fmt.Println("CANCELED")
 			//vvv.OrderPlaced = true
 		default:
-			return vvv, fmt.Errorf("default, unknown state")
+			return vvv, fmt.Errorf("default, unknown state for order_id:%s", r.Result.OrderID)
 		}
 	case <-timer.C:
 		fmt.Println("STOP timer for", r.Result.OrderID)
 		timer.Stop()
-		return vvv, fmt.Errorf("timeout, unknown state")
+		return vvv, fmt.Errorf("timeout, unknown state for order_id:%s", r.Result.OrderID)
 	}
 
 	return vvv, nil
