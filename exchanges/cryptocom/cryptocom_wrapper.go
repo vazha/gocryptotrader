@@ -537,6 +537,7 @@ func (c *Cryptocom) SubmitOrder(s *order.Submit) (order.SubmitResponse, error) {
 		s.Type.String(),
 		)
 	if err != nil {
+		resp.OrderID = r.OrderID // in case no matcher submit
 		return resp, err
 	}
 

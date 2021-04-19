@@ -279,7 +279,7 @@ func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bo
 	}
 	defer m.Cleanup()
 
-	fmt.Printf("MATCHER SET: %+v\n", m.sig)
+	fmt.Printf("MATCHER SET: %+v\n", m.sig) // 1365258593124093057
 
 	timer := time.NewTimer(time.Second * 6)
 	select {
