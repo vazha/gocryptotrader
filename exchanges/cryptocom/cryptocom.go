@@ -225,8 +225,20 @@ func (c *Cryptocom) WalletWithdrawal(currency, address, tag, amount string) (Wit
 
 // CreateOrder creates an order
 func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bool, price float64, side string, size float64, symbol, timeInForce string, triggerPrice float64, orderType string) (vvv CreateOrder, err error) {
-	if !c.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) { // if no websocket
+	//if !c.GetAuthenticatedAPISupport(exchange.WebsocketAuthentication) { // if no websocket
+	//	return vvv, fmt.Errorf("websocket disabled")
+	//}
+
+	if !c.IsWebsocketEnabled() {
 		return vvv, fmt.Errorf("websocket disabled")
+	}
+
+	if c.API.AuthenticatedWebsocketSupport {
+		return vvv, fmt.Errorf("websocket Auth disabled")
+	}
+
+	if !c.Websocket.IsConnected() || c.Websocket.IsConnecting() {
+		return vvv, fmt.Errorf("websocket not connected")
 	}
 
 	req := make(map[string]interface{})
