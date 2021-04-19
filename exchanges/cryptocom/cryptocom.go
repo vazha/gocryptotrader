@@ -234,7 +234,7 @@ func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bo
 	}
 
 	if c.API.AuthenticatedWebsocketSupport {
-		return vvv, fmt.Errorf("websocket Auth disabled")
+		// return vvv, fmt.Errorf("websocket Auth disabled")
 	}
 
 	if !c.Websocket.IsConnected() || c.Websocket.IsConnecting() {
