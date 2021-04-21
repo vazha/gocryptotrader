@@ -45,8 +45,9 @@ func (f *Fixer) Setup(config base.Settings) error {
 // GetSupportedCurrencies returns supported currencies
 func (f *Fixer) GetSupportedCurrencies() ([]string, error) {
 	var resp Symbols
+	v := url.Values{}
 
-	err := f.SendOpenHTTPRequest(fixerSupportedCurrencies, nil, &resp)
+	err := f.SendOpenHTTPRequest(fixerSupportedCurrencies, v, &resp)
 	if err != nil {
 		return nil, err
 	}

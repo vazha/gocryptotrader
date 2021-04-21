@@ -98,7 +98,11 @@ func (c *ConversionRates) Register(from, to Code) (Conversion, error) {
 // cross rates
 func (c *ConversionRates) Update(m map[string]float64) error {
 	if len(m) == 0 {
-		return errors.New("no data given")
+		if storage.IsVerbose() {
+			log.Debugln(log.Global, "No data given to updated Conversion Rates")
+		}
+		//return errors.New("no data given")
+		return nil
 	}
 
 	if storage.IsVerbose() {
