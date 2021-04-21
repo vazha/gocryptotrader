@@ -14,7 +14,11 @@ func (p *PairsManager) GetAssetTypes() asset.Items {
 	defer p.m.RUnlock()
 	var assetTypes asset.Items
 	for k := range p.Pairs {
-		assetTypes = append(assetTypes, k)
+
+		if k == "spot" {
+			assetTypes = append(assetTypes, k)
+		}
+
 	}
 	return assetTypes
 }
