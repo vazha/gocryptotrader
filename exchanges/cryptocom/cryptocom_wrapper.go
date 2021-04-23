@@ -311,6 +311,8 @@ func (c *Cryptocom) UpdateTicker(p currency.Pair, assetType asset.Item) (*ticker
 			return nil, err
 		}
 
+		time := time.Unix(tickers.Data[x].T / 1000, 0)
+
 		err = ticker.ProcessTicker(&ticker.Price{
 			Pair:         pair,
 			Ask:          tickers.Data[x].K,
@@ -319,11 +321,13 @@ func (c *Cryptocom) UpdateTicker(p currency.Pair, assetType asset.Item) (*ticker
 			Last:         tickers.Data[x].A,
 			Volume:       tickers.Data[x].V,
 			High:         tickers.Data[x].H,
+			LastUpdated:  time,
 			ExchangeName: c.Name,
 			AssetType:    assetType})
 		if err != nil {
 			return nil, err
 		}
+		//fmt.Println("ProcessTicker:", tickers.Data[x].A)
 	}
 
 	return ticker.GetTicker(c.Name, p, assetType)
@@ -605,7 +609,7 @@ func (c *Cryptocom) GetOrderInfo(orderID string, pair currency.Pair, assetType a
 		return order.Detail{}, err
 	}
 
-	fmt.Printf("GetOrderInfo: %+v\n", o)
+	// fmt.Printf("GetOrderInfo: %+v\n", o)
 
 	var od order.Detail
 	//if o == nil {

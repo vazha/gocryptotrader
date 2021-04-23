@@ -350,9 +350,10 @@ func (c *Cryptocom) wsHandleData(resp stream.Response) error {
 			return err
 		}
 
-		time := time.Unix(t.Result.Data[0].T, 0)
+		time := time.Unix(t.Result.Data[0].T / 1000, 0)
 
-		// fmt.Println("WS Ticker:", t.Result.Data[0], pair)
+		//fmt.Println("WS Ticker:", time, pair)
+
 		c.Websocket.DataHandler <- &ticker.Price{
 			ExchangeName: c.Name,
 			//Open:         t.OpenPrice,
@@ -438,6 +439,7 @@ func (c *Cryptocom) orderbookFilter(price, amount float64) bool {
 // GenerateDefaultSubscriptions Adds default subscriptions to websocket to be handled by ManageSubscriptions()
 func (c *Cryptocom) GenerateDefaultSubscriptions() ([]stream.ChannelSubscription, error) {
 	var channels = []string{"book.%s.150", "trade.%s", "ticker.%s"}
+	//var channels = []string{"book.%s.150"}
 	pairs, err := c.GetEnabledPairs(asset.Spot)
 	if err != nil {
 		return nil, err
