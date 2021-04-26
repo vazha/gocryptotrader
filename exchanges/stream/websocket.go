@@ -88,6 +88,7 @@ func (w *Websocket) Setup(s *WebsocketSetup) error {
 	}
 
 	if s.RunningURLAuth != "" {
+		fmt.Println("RunningURLAuth:", s.RunningURLAuth) // @todo del
 		err = w.SetWebsocketURL(s.RunningURLAuth, true, false)
 		if err != nil {
 			return err
@@ -326,11 +327,15 @@ func (w *Websocket) connectionMonitor() {
 					w.DataHandler <- err
 				}
 			case <-timer.C:
+				//fmt.Println("connectionMonitor_1", w.IsConnecting(), w.IsConnected())
 				if !w.IsConnecting() && !w.IsConnected() {
+					//fmt.Println("connectionMonitor_2")
 					err := w.Connect()
 					if err != nil {
+						//fmt.Println("connectionMonitor_3")
 						log.Error(log.WebsocketMgr, err)
 					} else {
+						//fmt.Println("connectionMonitor_4")
 						err = w.FlushChannels()
 						if err != nil {
 							log.Error(log.WebsocketMgr, err)
@@ -372,14 +377,16 @@ func (w *Websocket) Shutdown() error {
 	}
 
 	defer w.Orderbook.FlushBuffer()
-
+	//fmt.Println("Shutdown_01")
 	if w.Conn != nil {
+		//fmt.Println("Shutdown_011")
 		if err := w.Conn.Shutdown(); err != nil {
 			return err
 		}
 	}
-
+	//fmt.Println("Shutdown_02")
 	if w.AuthConn != nil {
+		//fmt.Println("Shutdown_022")
 		if err := w.AuthConn.Shutdown(); err != nil {
 			return err
 		}
@@ -389,9 +396,10 @@ func (w *Websocket) Shutdown() error {
 	w.subscriptionMutex.Lock()
 	w.subscriptions = nil
 	w.subscriptionMutex.Unlock()
-
+	//fmt.Println("Shutdown")
 	close(w.ShutdownC)
 	w.Wg.Wait()
+	//fmt.Println("Shutdown_2")
 	w.ShutdownC = make(chan struct{})
 	w.setConnectedStatus(false)
 	w.setConnectingStatus(false)
@@ -490,7 +498,8 @@ func (w *Websocket) trafficMonitor() {
 	w.setTrafficMonitorRunning(true)
 	w.Wg.Add(1)
 
-	w.trafficTimeout = time.Second * 60 // delete
+	w.trafficTimeout = time.Second * 45 // todo delete
+	fmt.Println("NEW trafficTimeout is", w.trafficTimeout)
 	go func() {
 		var trafficTimer = time.NewTimer(w.trafficTimeout)
 		var trafficAuthTimer = time.NewTimer(w.trafficTimeout)
@@ -518,7 +527,10 @@ func (w *Websocket) trafficMonitor() {
 				//fmt.Println("TrafficAlert", t)
 				switch {
 				case w.AuthConn != nil && w.AuthConn.GetURL() == t:
-					//fmt.Println("TrafficAlert Auth", t)
+					if t == "wss://stream.crypto.com/v2/user" {
+						//fmt.Println("TrafficAlert Auth", t)
+					}
+
 					if !trafficAuthTimer.Stop() {
 						select {
 						case <-trafficAuthTimer.C:
@@ -528,7 +540,10 @@ func (w *Websocket) trafficMonitor() {
 					w.setConnectedStatus(true)
 					trafficAuthTimer.Reset(w.trafficTimeout)
 				case w.Conn != nil && w.Conn.GetURL() == t:
-					//fmt.Println("TrafficAlert NON Auth", t)
+					if t == "wss://stream.crypto.com/v2/market" {
+						//fmt.Println("TrafficAlert NON Auth", t)
+					}
+
 					if !trafficTimer.Stop() {
 						select {
 						case <-trafficTimer.C:
@@ -541,6 +556,7 @@ func (w *Websocket) trafficMonitor() {
 					log.Warnf(log.WebsocketMgr, "Unhandled traffic alert for url: %s", t)
 				}
 			case <-trafficTimer.C: // Falls through when timer runs out
+				//fmt.Println("trafficTimer:", w.Conn.GetURL())
 				if w.verbose {
 					log.Warnf(log.WebsocketMgr,
 						"%v websocket: has not received a traffic alert in %v. Reconnecting",
@@ -549,7 +565,9 @@ func (w *Websocket) trafficMonitor() {
 				}
 				trafficTimer.Stop()
 				w.Wg.Done()
+				//fmt.Println("trafficTimer_2", w.IsConnecting() , w.IsConnected() )
 				if !w.IsConnecting() && w.IsConnected() {
+					//fmt.Println("trafficTimer_3")
 					err := w.Shutdown()
 					if err != nil {
 						log.Errorf(log.WebsocketMgr,
@@ -560,8 +578,8 @@ func (w *Websocket) trafficMonitor() {
 				w.setTrafficMonitorRunning(false)
 				return
 			case <-trafficAuthTimer.C: // Falls through when auth timer runs out
-				fmt.Println("KLEE")
-				trafficAuthTimer.Reset(w.trafficTimeout)
+				fmt.Println("trafficAuthTimer.C !!!")
+				//fmt.Println("trafficAuthTimer:", w.Conn.GetURL())
 				if w.verbose {
 					log.Warnf(log.WebsocketMgr,
 						"%v auth websocket: has not received a traffic alert in %v. Reconnecting",

@@ -41,10 +41,6 @@ func (c *Cryptocom) WsConnect() error {
 	if err != nil {
 		return err
 	}
-	c.Websocket.Conn.SetupPingHandler(stream.PingHandler{
-		MessageType: websocket.PingMessage,
-		Delay:       cryptocomWebsocketTimer,
-	})
 
 	comms := make(chan stream.Response)
 	go c.wsReadData(comms)
