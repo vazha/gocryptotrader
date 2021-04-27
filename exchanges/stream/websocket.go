@@ -528,7 +528,7 @@ func (w *Websocket) trafficMonitor() {
 				switch {
 				case w.AuthConn != nil && w.AuthConn.GetURL() == t:
 					if t == "wss://stream.crypto.com/v2/user" {
-						//fmt.Println("TrafficAlert Auth", t)
+						// fmt.Println("TrafficAlert Auth", t)
 					}
 
 					if !trafficAuthTimer.Stop() {

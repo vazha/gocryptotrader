@@ -468,4 +468,3 @@ type UserOrderResponse struct {
 	Status          string  `json:"status"`
 	Reason          float64  `json:"reason"`
 }
-

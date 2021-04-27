@@ -198,8 +198,31 @@ func (c *Cryptocom) wsHandleData(resp stream.Response) error {
 		return nil
 	case result.Method == "public/heartbeat":
 		return c.SendHeartbeat(result.ID, resp.Auth)
+	case result.Result.Channel == "user.balance":
+		// fmt.Println("user.balance:", result.Result.Data)
+		var balanceUpdate Bals
+		for i := range result.Result.Data {
+			if data, ok := result.Result.Data[i].(map[string]interface{}); ok {
+				for k, v := range data {
+					switch k {
+					case "balance":
+						balanceUpdate.Balance = v.(float64)
+					case "available":
+						balanceUpdate.Available = v.(float64)
+					case"order":
+						balanceUpdate.Order = v.(float64)
+					case"stake":
+						balanceUpdate.Stake = v.(float64)
+					case "currency":
+						balanceUpdate.Currency = v.(string)
+					}
+				}
+			}
+		}
+
+		c.Websocket.DataHandler <- balanceUpdate
 	case result.Result.Channel == "user.order":
-		fmt.Println("user.order:", result.Result.Data)
+		// fmt.Println("user.order:", result.Result.Data)
 		//orders := make(map[string]UserOrderResponse)
 		for i := range result.Result.Data {
 			if data, ok := result.Result.Data[i].(map[string]interface{}); ok {
@@ -226,67 +249,6 @@ func (c *Cryptocom) wsHandleData(resp stream.Response) error {
 					//fmt.Printf("Local matcher IncomingWithData not sent for %s\n", orderID)
 				}
 
-			}
-		}
-	case result.Result.Channel == "notificationApi":
-		var notification wsNotification
-		err = json.Unmarshal(respRaw, &notification)
-		if err != nil {
-			return err
-		}
-		for i := range notification.Data {
-			var oType order.Type
-			var oSide order.Side
-			var oStatus order.Status
-			oType, err = order.StringToOrderType(notification.Data[i].Type)
-			if err != nil {
-				c.Websocket.DataHandler <- order.ClassificationError{
-					Exchange: c.Name,
-					OrderID:  notification.Data[i].OrderID,
-					Err:      err,
-				}
-			}
-			oSide, err = order.StringToOrderSide(notification.Data[i].OrderMode)
-			if err != nil {
-				c.Websocket.DataHandler <- order.ClassificationError{
-					Exchange: c.Name,
-					OrderID:  notification.Data[i].OrderID,
-					Err:      err,
-				}
-			}
-			oStatus, err = stringToOrderStatus(notification.Data[i].Status)
-			if err != nil {
-				c.Websocket.DataHandler <- order.ClassificationError{
-					Exchange: c.Name,
-					OrderID:  notification.Data[i].OrderID,
-					Err:      err,
-				}
-			}
-
-			var p currency.Pair
-			p, err = currency.NewPairFromString(notification.Data[i].Symbol)
-			if err != nil {
-				return err
-			}
-
-			var a asset.Item
-			a, err = c.GetPairAssetType(p)
-			if err != nil {
-				return err
-			}
-
-			c.Websocket.DataHandler <- &order.Detail{
-				Price:        notification.Data[i].Price,
-				Amount:       notification.Data[i].Size,
-				TriggerPrice: notification.Data[i].TriggerPrice,
-				Exchange:     c.Name,
-				ID:           notification.Data[i].OrderID,
-				Type:         oType,
-				Side:         oSide,
-				Status:       oStatus,
-				AssetType:    a,
-				Date:         time.Unix(0, notification.Data[i].Timestamp*int64(time.Millisecond)),
-				Pair:         p,
 			}
 		}
 	case strings.Contains(result.Result.Channel, "trade"):
