@@ -499,6 +499,7 @@ func (w *Websocket) trafficMonitor() {
 	w.Wg.Add(1)
 
 	w.trafficTimeout = time.Second * 45 // todo delete
+	AuthTrafficTimeout := time.Second * 90 // todo delete
 	fmt.Println("NEW trafficTimeout is", w.trafficTimeout)
 	go func() {
 		var trafficTimer = time.NewTimer(w.trafficTimeout)
@@ -538,7 +539,7 @@ func (w *Websocket) trafficMonitor() {
 						}
 					}
 					w.setConnectedStatus(true)
-					trafficAuthTimer.Reset(w.trafficTimeout)
+					trafficAuthTimer.Reset(AuthTrafficTimeout)
 				case w.Conn != nil && w.Conn.GetURL() == t:
 					if t == "wss://stream.crypto.com/v2/market" {
 						//fmt.Println("TrafficAlert NON Auth", t)
@@ -584,7 +585,7 @@ func (w *Websocket) trafficMonitor() {
 					log.Warnf(log.WebsocketMgr,
 						"%v auth websocket: has not received a traffic alert in %v. Reconnecting",
 						w.exchangeName,
-						w.trafficTimeout)
+						AuthTrafficTimeout)
 				}
 				trafficAuthTimer.Stop()
 				w.Wg.Done()

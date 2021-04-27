@@ -49,7 +49,7 @@ func (m *Match) IncomingWithData(signature interface{}, data UserOrderResponse) 
 
 		select {
 		case <-timer1.C:
-			fmt.Println("IncomingWithData STOP timer1 for", s)
+			// fmt.Println("IncomingWithData STOP timer1 for", s)
 			timer1.Stop()
 			return false
 		default:
