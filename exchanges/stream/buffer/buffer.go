@@ -140,6 +140,7 @@ func (w *Orderbook) processBufferUpdate(o *orderbookHolder, u *Update) (bool, er
 // price level
 func (w *Orderbook) processObUpdate(o *orderbookHolder, u *Update) error {
 	o.ob.LastUpdateID = u.UpdateID
+	o.ob.LastUpdated = u.UpdateTime
 	if w.updateEntriesByID {
 		return o.updateByIDAndAction(u)
 	}

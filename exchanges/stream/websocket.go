@@ -557,7 +557,7 @@ func (w *Websocket) trafficMonitor() {
 					log.Warnf(log.WebsocketMgr, "Unhandled traffic alert for url: %s", t)
 				}
 			case <-trafficTimer.C: // Falls through when timer runs out
-				//fmt.Println("trafficTimer:", w.Conn.GetURL())
+				fmt.Println("trafficTimer:", w.Conn.GetURL())
 				if w.verbose {
 					log.Warnf(log.WebsocketMgr,
 						"%v websocket: has not received a traffic alert in %v. Reconnecting",

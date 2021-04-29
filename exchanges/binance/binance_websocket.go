@@ -596,13 +596,14 @@ func (b *Binance) ProcessUpdate(cp currency.Pair, a asset.Item, ws *WebsocketDep
 		}
 		updateAsk = append(updateAsk, orderbook.Item{Price: p, Amount: a})
 	}
-
+//fmt.Println("BIN UpdateTime:", ws.Timestamp)
 	return b.Websocket.Orderbook.Update(&buffer.Update{
 		Bids:     updateBid,
 		Asks:     updateAsk,
 		Pair:     cp,
 		UpdateID: ws.LastUpdateID,
 		Asset:    a,
+		UpdateTime: ws.Timestamp,
 	})
 }
 

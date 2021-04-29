@@ -299,17 +299,16 @@ func (c *Cryptocom) CreateOrder(clOrderID string, deviation float64, postOnly bo
 		fmt.Println("payload read:", payload)
 		switch payload.Status {
 		case "REJECTED":
-			fmt.Println("REJECTED reason:", payload.Reason)
+			//fmt.Println("REJECTED reason:", payload.Reason)
 			return vvv, fmt.Errorf("Insufficient funds")
 		case "ACTIVE":
-			fmt.Println("ACTIVE")
+			//fmt.Println("ACTIVE")
 			vvv.OrderPlaced = true
 		case "FILLED":
-			fmt.Println("FILLED")
+			//fmt.Println("FILLED")
 			vvv.OrderPlaced = true
 		case "CANCELED":
-			fmt.Println("CANCELED")
-			//vvv.OrderPlaced = true
+			//fmt.Println("CANCELED")
 		default:
 			return vvv, fmt.Errorf("default, unknown state for order_id:%s", r.Result.OrderID)
 		}
