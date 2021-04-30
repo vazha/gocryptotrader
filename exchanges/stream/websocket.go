@@ -104,6 +104,7 @@ func (w *Websocket) Setup(s *WebsocketSetup) error {
 	if s.WebsocketTimeout < time.Second {
 		return fmt.Errorf("traffic timeout cannot be less than %s", time.Second)
 	}
+	fmt.Println("WebsocketTimeout", s.WebsocketTimeout)
 	w.trafficTimeout = s.WebsocketTimeout
 
 	w.ShutdownC = make(chan struct{})
@@ -192,7 +193,7 @@ func (w *Websocket) Connect() error {
 	w.dataMonitor()
 	w.trafficMonitor()
 	w.setConnectingStatus(true)
-
+fmt.Println("w.connector go")
 	err := w.connector()
 	if err != nil {
 		w.setConnectingStatus(false)
@@ -239,9 +240,10 @@ func (w *Websocket) dataMonitor() {
 	}
 	w.setDataMonitorRunning(true)
 	w.Wg.Add(1)
-
+fmt.Println("dataMonitor start")
 	go func() {
 		defer func() {
+			fmt.Println("dataMonitor finish")
 			for {
 				// Bleeds data from the websocket connection if needed
 				select {
@@ -332,14 +334,16 @@ func (w *Websocket) connectionMonitor() {
 					//fmt.Println("connectionMonitor_2")
 					err := w.Connect()
 					if err != nil {
-						//fmt.Println("connectionMonitor_3")
+						fmt.Println("w.Connect error")
 						log.Error(log.WebsocketMgr, err)
 					} else {
-						//fmt.Println("connectionMonitor_4")
-						err = w.FlushChannels()
+						fmt.Println("w.Connect done")
+						err = w.FlushChannels2()
 						if err != nil {
+							fmt.Println("w.FlushChannels2 err")
 							log.Error(log.WebsocketMgr, err)
 						}
+						fmt.Println("w.FlushChannels2 done")
 					}
 				}
 				if !timer.Stop() {
@@ -378,24 +382,20 @@ func (w *Websocket) Shutdown() error {
 
 	defer w.Orderbook.FlushBuffer()
 	//fmt.Println("Shutdown_01")
+	var connErr, AuthConnErr error
 	if w.Conn != nil {
-		//fmt.Println("Shutdown_011")
-		if err := w.Conn.Shutdown(); err != nil {
-			return err
-		}
+		connErr = w.Conn.Shutdown()
 	}
 	//fmt.Println("Shutdown_02")
 	if w.AuthConn != nil {
-		//fmt.Println("Shutdown_022")
-		if err := w.AuthConn.Shutdown(); err != nil {
-			return err
-		}
+		AuthConnErr = w.AuthConn.Shutdown()
 	}
 
 	// flush any subscriptions from last connection if needed
 	w.subscriptionMutex.Lock()
 	w.subscriptions = nil
 	w.subscriptionMutex.Unlock()
+
 	//fmt.Println("Shutdown")
 	close(w.ShutdownC)
 	w.Wg.Wait()
@@ -403,6 +403,15 @@ func (w *Websocket) Shutdown() error {
 	w.ShutdownC = make(chan struct{})
 	w.setConnectedStatus(false)
 	w.setConnectingStatus(false)
+
+	if connErr != nil {
+		return connErr
+	}
+
+	if AuthConnErr != nil {
+		return AuthConnErr
+	}
+
 	if w.verbose {
 		log.Debugf(log.WebsocketMgr,
 			"%v websocket: completed websocket shutdown\n",
@@ -441,21 +450,93 @@ func (w *Websocket) FlushChannels() (err error) {
 			}
 			newsubs = append(newsubs, newAuthSubs...) // add auth websockets subscriptions if enabled
 		}
-
+		//fmt.Println("SubscribeToChannels_1", newsubs)
+		//fmt.Println("Exist:", w.subscriptions)
 		subs, unsubs := w.GetChannelDifference(newsubs)
+		//fmt.Println("SubscribeToChannels_2", subs, unsubs)
 		if w.features.Unsubscribe {
 			if len(unsubs) != 0 {
+				//fmt.Println("UnsubscribeChannels", unsubs)
 				err := w.UnsubscribeChannels(unsubs)
 				if err != nil {
 					return err
 				}
 			}
 		}
-
+		//fmt.Println("SubscribeToChannels", subs)
 		if len(subs) < 1 {
 			return nil
 		}
+
 		return w.SubscribeToChannels(subs)
+	} else if w.features.FullPayloadSubscribe {
+		// FullPayloadSubscribe means that the endpoint requires all
+		// subscriptions to be sent via the websocket connection e.g. if you are
+		// subscribed to ticker and orderbook but require trades as well, you
+		// would need to send ticker, orderbook and trades channel subscription
+		// messages.
+		newsubs, err := w.GenerateSubs()
+		if err != nil {
+			return err
+		}
+
+		if w.CanUseAuthenticatedEndpoints() && w.GenerateAuthSubs != nil {
+			newAuthSubs, err := w.GenerateAuthSubs()
+			if err != nil {
+				return err
+			}
+			newsubs = append(newsubs, newAuthSubs...) // add auth websockets subscriptions if enabled
+		}
+
+		if len(newsubs) != 0 {
+			// Purge subscription list as there will be conflicts
+			w.subscriptionMutex.Lock()
+			w.subscriptions = nil
+			w.subscriptionMutex.Unlock()
+			return w.SubscribeToChannels(newsubs)
+		}
+		return nil
+	}
+
+	return w.Shutdown()
+}
+
+// FlushChannels2 flushes channel subscriptions when there is a pair/asset change
+func (w *Websocket) FlushChannels2() (err error) {
+	if !w.IsEnabled() {
+		return fmt.Errorf("%s websocket: service not enabled", w.exchangeName)
+	}
+
+	if !w.IsConnected() {
+		return fmt.Errorf("%s websocket: service not connected", w.exchangeName)
+	}
+
+	defer func() {
+		if err != nil {
+			w.setConnectingStatus(false)
+			w.setConnectedStatus(false)
+		}
+	}()
+
+	if w.features.Subscribe {
+		newsubs, err := w.GenerateSubs()
+		if err != nil {
+			return err
+		}
+
+		if w.CanUseAuthenticatedEndpoints() && w.GenerateAuthSubs != nil {
+			newAuthSubs, err := w.GenerateAuthSubs()
+			if err != nil {
+				return err
+			}
+			newsubs = append(newsubs, newAuthSubs...) // add auth websockets subscriptions if enabled
+		}
+
+		if len(newsubs) < 1 {
+			return nil
+		}
+
+		return w.SubscribeToChannels2(newsubs)
 	} else if w.features.FullPayloadSubscribe {
 		// FullPayloadSubscribe means that the endpoint requires all
 		// subscriptions to be sent via the websocket connection e.g. if you are
@@ -500,8 +581,11 @@ func (w *Websocket) trafficMonitor() {
 
 	w.trafficTimeout = time.Second * 45 // todo delete
 	AuthTrafficTimeout := time.Second * 90 // todo delete
-	fmt.Println("NEW trafficTimeout is", w.trafficTimeout)
+	fmt.Println("trafficTimeout run", w.trafficTimeout)
 	go func() {
+		defer func() {
+			fmt.Println("trafficTimeout finish")
+		}()
 		var trafficTimer = time.NewTimer(w.trafficTimeout)
 		var trafficAuthTimer = time.NewTimer(w.trafficTimeout)
 		if !w.CanUseAuthenticatedEndpoints() {
@@ -908,6 +992,19 @@ func (w *Websocket) SubscribeToChannels(channels []ChannelSubscription) error {
 			}
 		}
 	}
+	return w.Subscriber(channels)
+}
+
+// SubscribeToChannels2 appends supplied channels to channelsToSubscribe
+func (w *Websocket) SubscribeToChannels2(channels []ChannelSubscription) error {
+	if len(channels) == 0 {
+		return fmt.Errorf("%s websocket: cannot subscribe no channels supplied",
+			w.exchangeName)
+	}
+
+	w.subscriptionMutex.Lock()
+	defer w.subscriptionMutex.Unlock()
+
 	return w.Subscriber(channels)
 }
 

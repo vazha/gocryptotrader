@@ -203,6 +203,15 @@ func (w *WebsocketConnection) IsConnected() bool {
 
 // ReadMessage reads messages, can handle text, gzip and binary
 func (w *WebsocketConnection) ReadMessage() Response {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf(log.WebsocketMgr,
+				"%v gorilla websocket ReadMessage (panic, recover) error: %v",
+				w.ExchangeName,
+				r)
+		}
+	}()
+
 	mType, resp, err := w.Connection.ReadMessage()
 	if err != nil {
 		if isDisconnectionError(err) {

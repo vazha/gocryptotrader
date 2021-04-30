@@ -87,6 +87,7 @@ func (k *Kraken) WsConnect() error {
 	}
 
 	var dialer websocket.Dialer
+	dialer.HandshakeTimeout = 5000000000
 	err := k.Websocket.Conn.Dial(&dialer, http.Header{})
 	if err != nil {
 		return err
@@ -786,6 +787,7 @@ func (k *Kraken) wsProcessOrderBook(channelData *WebsocketChannelData, data map[
 				go func(resub *stream.ChannelSubscription) {
 					// This was locking the main websocket reader routine and a
 					// backlog occurred. So put this into it's own go routine.
+					resub.Currency.Delimiter = "/" // prevent error
 					errResub := k.Websocket.ResubscribeToChannel(resub)
 					if errResub != nil {
 						log.Errorf(log.WebsocketMgr,
