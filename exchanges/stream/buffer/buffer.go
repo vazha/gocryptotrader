@@ -96,7 +96,8 @@ func (w *Orderbook) Update(u *Update) error {
 	if err != nil {
 		return err
 	}
-
+	//fmt.Println("obLookup.obU", u.UpdateTime)
+	//fmt.Println("obLookup.ob2", obLookup.ob.LastUpdated)
 	// Process in data handler
 	select {
 	case w.dataHandler <- obLookup.ob:
@@ -140,6 +141,7 @@ func (w *Orderbook) processBufferUpdate(o *orderbookHolder, u *Update) (bool, er
 // price level
 func (w *Orderbook) processObUpdate(o *orderbookHolder, u *Update) error {
 	o.ob.LastUpdateID = u.UpdateID
+	o.ob.LastUpdated = u.UpdateTime
 	if w.updateEntriesByID {
 		return o.updateByIDAndAction(u)
 	}
