@@ -794,6 +794,16 @@ func (k *Kraken) wsProcessOrderBook(channelData *WebsocketChannelData, data map[
 							"resubscription failure for %v: %v",
 							resub,
 							errResub)
+
+						var cs []stream.ChannelSubscription
+						cs = append(cs, *resub)
+						errSub := k.Websocket.SubscribeToChannels(cs)
+						if errSub != nil {
+							log.Errorf(log.WebsocketMgr,
+								"SubscribeToChannels failure for %v: %v",
+								resub,
+								errSub)
+						}
 					}
 				}(&stream.ChannelSubscription{
 					Channel:  krakenWsOrderbook,

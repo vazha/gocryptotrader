@@ -382,7 +382,7 @@ func (p *Poloniex) wsHandleTickerData(data []interface{}) error {
 	currencyPair, err := currency.NewPairDelimiter(currencyIDMap[tickerData[0].(float64)],
 		currency.UnderscoreDelimiter)
 	if err != nil {
-		return err
+		return fmt.Errorf("%v, for Pair: %s, id: %f", err, currencyIDMap[tickerData[0].(float64)], tickerData[0].(float64))
 	}
 
 	enabled, err := p.GetEnabledPairs(asset.Spot)
