@@ -240,7 +240,7 @@ func (w *Websocket) dataMonitor() {
 	}
 	w.setDataMonitorRunning(true)
 	w.Wg.Add(1)
-fmt.Println("dataMonitor start")
+	fmt.Println("dataMonitor start")
 	go func() {
 		defer func() {
 			fmt.Println("dataMonitor finish")
@@ -399,7 +399,7 @@ func (w *Websocket) Shutdown() error {
 	fmt.Println("Shutdown command sent")
 	close(w.ShutdownC)
 	w.Wg.Wait()
-	fmt.Println("Shutdown command OK")
+	fmt.Println("Shutdown command done")
 	w.ShutdownC = make(chan struct{})
 	w.setConnectedStatus(false)
 	w.setConnectingStatus(false)
@@ -585,6 +585,7 @@ func (w *Websocket) trafficMonitor() {
 	go func() {
 		defer func() {
 			fmt.Println("trafficTimeout finish")
+			w.Wg.Done()
 		}()
 		var trafficTimer = time.NewTimer(w.trafficTimeout)
 		var trafficAuthTimer = time.NewTimer(w.trafficTimeout)
@@ -649,10 +650,10 @@ func (w *Websocket) trafficMonitor() {
 						w.trafficTimeout)
 				}
 				trafficTimer.Stop()
-				w.Wg.Done()
+				//w.Wg.Done()
 				//fmt.Println("trafficTimer_2", w.IsConnecting() , w.IsConnected() )
 				if !w.IsConnecting() && w.IsConnected() {
-					//fmt.Println("trafficTimer_3")
+					fmt.Println("call Shutdown")
 					err := w.Shutdown()
 					if err != nil {
 						log.Errorf(log.WebsocketMgr,
@@ -672,9 +673,9 @@ func (w *Websocket) trafficMonitor() {
 						AuthTrafficTimeout)
 				}
 				trafficAuthTimer.Stop()
-				w.Wg.Done()
+				//w.Wg.Done()
 				if !w.IsConnecting() && w.IsConnected() {
-					fmt.Println("call Shutdown")
+					fmt.Println("call Auth Shutdown")
 					err := w.Shutdown()
 					if err != nil {
 						log.Errorf(log.WebsocketMgr,
