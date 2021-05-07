@@ -396,10 +396,10 @@ func (w *Websocket) Shutdown() error {
 	w.subscriptions = nil
 	w.subscriptionMutex.Unlock()
 
-	//fmt.Println("Shutdown")
+	fmt.Println("Shutdown command sent")
 	close(w.ShutdownC)
 	w.Wg.Wait()
-	//fmt.Println("Shutdown_2")
+	fmt.Println("Shutdown command OK")
 	w.ShutdownC = make(chan struct{})
 	w.setConnectedStatus(false)
 	w.setConnectingStatus(false)
@@ -674,6 +674,7 @@ func (w *Websocket) trafficMonitor() {
 				trafficAuthTimer.Stop()
 				w.Wg.Done()
 				if !w.IsConnecting() && w.IsConnected() {
+					fmt.Println("call Shutdown")
 					err := w.Shutdown()
 					if err != nil {
 						log.Errorf(log.WebsocketMgr,
