@@ -584,7 +584,7 @@ func (w *Websocket) trafficMonitor() {
 	fmt.Println("trafficTimeout run", w.trafficTimeout)
 	go func() {
 		defer func() {
-			fmt.Println("trafficTimeout finish")
+			fmt.Println("trafficMonitor finish")
 			w.Wg.Done()
 		}()
 		var trafficTimer = time.NewTimer(w.trafficTimeout)
@@ -607,7 +607,7 @@ func (w *Websocket) trafficMonitor() {
 				}
 				trafficTimer.Stop()
 				w.setTrafficMonitorRunning(false)
-				w.Wg.Done()
+				//w.Wg.Done()
 				return
 			case t := <-w.TrafficAlert:
 				//fmt.Println("TrafficAlert", t)
