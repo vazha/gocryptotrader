@@ -286,7 +286,11 @@ func (w *Websocket) connectionMonitor() {
 		return
 	}
 	w.setConnectionMonitorRunning(true)
+	fmt.Println("connectionMonitor Start")
 	go func() {
+		defer func() {
+			fmt.Println("connectionMonitor Exit - very strange")
+		}()
 		timer := time.NewTimer(connectionMonitorDelay)
 
 		for {
@@ -585,7 +589,6 @@ func (w *Websocket) trafficMonitor() {
 	go func() {
 		defer func() {
 			fmt.Println("trafficMonitor finish")
-			w.Wg.Done()
 		}()
 		var trafficTimer = time.NewTimer(w.trafficTimeout)
 		var trafficAuthTimer = time.NewTimer(w.trafficTimeout)
@@ -607,7 +610,7 @@ func (w *Websocket) trafficMonitor() {
 				}
 				trafficTimer.Stop()
 				w.setTrafficMonitorRunning(false)
-				//w.Wg.Done()
+				w.Wg.Done()
 				return
 			case t := <-w.TrafficAlert:
 				//fmt.Println("TrafficAlert", t)
@@ -650,7 +653,7 @@ func (w *Websocket) trafficMonitor() {
 						w.trafficTimeout)
 				}
 				trafficTimer.Stop()
-				//w.Wg.Done()
+				w.Wg.Done()
 				//fmt.Println("trafficTimer_2", w.IsConnecting() , w.IsConnected() )
 				if !w.IsConnecting() && w.IsConnected() {
 					fmt.Println("call Shutdown")
@@ -673,7 +676,7 @@ func (w *Websocket) trafficMonitor() {
 						AuthTrafficTimeout)
 				}
 				trafficAuthTimer.Stop()
-				//w.Wg.Done()
+				w.Wg.Done()
 				if !w.IsConnecting() && w.IsConnected() {
 					fmt.Println("call Auth Shutdown")
 					err := w.Shutdown()
