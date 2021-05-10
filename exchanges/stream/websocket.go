@@ -191,22 +191,28 @@ func (w *Websocket) Connect() error {
 	}
 
 	w.dataMonitor()
-	w.trafficMonitor()
+	// w.trafficMonitor()
 	w.setConnectingStatus(true)
-fmt.Println("w.connector go")
+
+	if !w.IsConnectionMonitorRunning() {
+		w.connectionMonitor()
+	}
+
+	fmt.Println("w.connector go")
 	err := w.connector()
 	if err != nil {
 		w.setConnectingStatus(false)
 		return fmt.Errorf("%v Error connecting %s",
 			w.exchangeName, err)
 	}
+	w.trafficMonitor()
 	w.setConnectedStatus(true)
 	w.setConnectingStatus(false)
 	w.setInit(true)
 
-	if !w.IsConnectionMonitorRunning() {
-		w.connectionMonitor()
-	}
+	//if !w.IsConnectionMonitorRunning() {
+	//	w.connectionMonitor()
+	//}
 
 	return nil
 }
