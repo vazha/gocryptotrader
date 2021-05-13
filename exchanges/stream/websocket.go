@@ -334,6 +334,7 @@ func (w *Websocket) connectionMonitor() {
 						"%v websocket has been disconnected. Reason: %v",
 						w.exchangeName, err)
 					w.setConnectedStatus(false)
+
 				} else {
 					// pass off non disconnect errors to datahandler to manage
 					w.DataHandler <- err
@@ -344,16 +345,16 @@ func (w *Websocket) connectionMonitor() {
 					//fmt.Println("connectionMonitor_2")
 					err := w.Connect()
 					if err != nil {
-						fmt.Println("w.Connect error")
+						fmt.Printf("%s, w.Connect error. wg: %v\n", w.exchangeName, w.Wg)
 						log.Error(log.WebsocketMgr, err)
 					} else {
-						fmt.Println("w.Connect done")
+						fmt.Printf("%s, w.Connect done. wg: %v\n", w.exchangeName, w.Wg)
 						err = w.FlushChannels2()
 						if err != nil {
-							fmt.Println("w.FlushChannels2 err")
+							fmt.Printf("%s, w.FlushChannels2 err. wg: %v\n", w.exchangeName, w.Wg)
 							log.Error(log.WebsocketMgr, err)
 						}
-						fmt.Println("w.FlushChannels2 done")
+						fmt.Printf("%s, w.FlushChannels2 done. wg: %v\n", w.exchangeName, w.Wg)
 					}
 				}
 				if !timer.Stop() {
@@ -406,10 +407,12 @@ func (w *Websocket) Shutdown() error {
 	w.subscriptions = nil
 	w.subscriptionMutex.Unlock()
 
-	fmt.Println("Shutdown command sent")
+
+	fmt.Printf("%s, Shutdown command sent. wg: %v\n", w.exchangeName, w.Wg)
 	close(w.ShutdownC)
+	fmt.Printf("%s, Shutdown command pre. wg: %v\n", w.exchangeName, w.Wg)
 	w.Wg.Wait()
-	fmt.Println("Shutdown command done")
+	fmt.Printf("%s, Shutdown command done.\n", w.exchangeName)
 	w.ShutdownC = make(chan struct{})
 	w.setConnectedStatus(false)
 	w.setConnectingStatus(false)
@@ -594,7 +597,7 @@ func (w *Websocket) trafficMonitor() {
 	fmt.Println("trafficTimeout run", w.trafficTimeout)
 	go func() {
 		defer func() {
-			fmt.Println("trafficMonitor finish")
+			fmt.Printf("%s, trafficMonitor finish wg: %v\n", w.exchangeName, w.Wg)
 		}()
 		var trafficTimer = time.NewTimer(w.trafficTimeout)
 		var trafficAuthTimer = time.NewTimer(w.trafficTimeout)
@@ -662,7 +665,7 @@ func (w *Websocket) trafficMonitor() {
 				w.Wg.Done()
 				//fmt.Println("trafficTimer_2", w.IsConnecting() , w.IsConnected() )
 				if !w.IsConnecting() && w.IsConnected() {
-					fmt.Println("call Shutdown")
+					fmt.Printf("%s, call Shutdown. wg: %v\n", w.exchangeName, w.Wg)
 					err := w.Shutdown()
 					if err != nil {
 						log.Errorf(log.WebsocketMgr,
@@ -673,7 +676,7 @@ func (w *Websocket) trafficMonitor() {
 				w.setTrafficMonitorRunning(false)
 				return
 			case <-trafficAuthTimer.C: // Falls through when auth timer runs out
-				fmt.Println("trafficAuthTimer.C !!!")
+				fmt.Printf("%s, trafficAuthTimer.C !!!. wg: %v\n", w.exchangeName, w.Wg)
 				//fmt.Println("trafficAuthTimer:", w.Conn.GetURL())
 				if w.verbose {
 					log.Warnf(log.WebsocketMgr,
@@ -684,7 +687,7 @@ func (w *Websocket) trafficMonitor() {
 				trafficAuthTimer.Stop()
 				w.Wg.Done()
 				if !w.IsConnecting() && w.IsConnected() {
-					fmt.Println("call Auth Shutdown")
+					fmt.Printf("%s, call Auth Shutdown. wg: %v\n", w.exchangeName, w.Wg)
 					err := w.Shutdown()
 					if err != nil {
 						log.Errorf(log.WebsocketMgr,
