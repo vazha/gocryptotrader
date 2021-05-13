@@ -139,8 +139,12 @@ func (k *Kraken) WsConnect() error {
 
 // wsFunnelConnectionData funnels both auth and public ws data into one manageable place
 func (k *Kraken) wsFunnelConnectionData(ws stream.Connection, comms chan stream.Response) {
-	k.Websocket.Wg.Add(1)
-	defer k.Websocket.Wg.Done()
+	//k.Websocket.Wg.Add(1)
+	//defer k.Websocket.Wg.Done()
+	defer func() {
+		fmt.Printf("%s, wsFunnelConnectionData exit, wg: %v\n", k.Name, k.Websocket.Wg)
+	}()
+
 	for {
 		resp := ws.ReadMessage()
 		if resp.Raw == nil {

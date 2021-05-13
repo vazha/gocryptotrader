@@ -73,8 +73,12 @@ func (c *Cryptocom) WsConnect() error {
 
 // wsFunnelConnectionData funnels both auth and public ws data into one manageable place
 func (c *Cryptocom) wsFunnelConnectionData(ws stream.Connection, comms chan stream.Response) {
-	c.Websocket.Wg.Add(1)
-	defer c.Websocket.Wg.Done()
+	//c.Websocket.Wg.Add(1)
+	//defer c.Websocket.Wg.Done()
+	defer func() {
+		fmt.Printf("%s, wsFunnelConnectionData exit, wg: %v\n", c.Name, c.Websocket.Wg)
+	}()
+
 	for {
 		resp := ws.ReadMessage()
 		if resp.Raw == nil {

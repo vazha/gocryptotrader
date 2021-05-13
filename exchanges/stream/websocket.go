@@ -198,7 +198,7 @@ func (w *Websocket) Connect() error {
 		w.connectionMonitor()
 	}
 
-	fmt.Println("w.connector go")
+	fmt.Printf("%s, w.connector go, WG: %v\n", w.exchangeName, w.Wg)
 	err := w.connector()
 	if err != nil {
 		w.setConnectingStatus(false)
@@ -246,7 +246,7 @@ func (w *Websocket) dataMonitor() {
 	}
 	w.setDataMonitorRunning(true)
 	w.Wg.Add(1)
-	fmt.Println("dataMonitor start")
+	fmt.Printf("%s, dataMonitor start. WG: %v\n", w.exchangeName, w.Wg)
 	go func() {
 		defer func() {
 			fmt.Println("dataMonitor finish")
@@ -292,7 +292,7 @@ func (w *Websocket) connectionMonitor() {
 		return
 	}
 	w.setConnectionMonitorRunning(true)
-	fmt.Println("connectionMonitor Start")
+	fmt.Printf("%s, connectionMonitor Start\n", w.exchangeName)
 	go func() {
 		defer func() {
 			fmt.Println("connectionMonitor Exit - very strange")
@@ -412,7 +412,7 @@ func (w *Websocket) Shutdown() error {
 	close(w.ShutdownC)
 	fmt.Printf("%s, Shutdown command pre. wg: %v\n", w.exchangeName, w.Wg)
 	w.Wg.Wait()
-	fmt.Printf("%s, Shutdown command done.\n", w.exchangeName)
+	fmt.Printf("%s, Shutdown command done. wg: %v\n", w.exchangeName, w.Wg)
 	w.ShutdownC = make(chan struct{})
 	w.setConnectedStatus(false)
 	w.setConnectingStatus(false)
@@ -591,10 +591,11 @@ func (w *Websocket) trafficMonitor() {
 	}
 	w.setTrafficMonitorRunning(true)
 	w.Wg.Add(1)
+	fmt.Printf("%s, trafficMonitor start. WG: %v\n", w.exchangeName, w.Wg)
 
 	w.trafficTimeout = time.Second * 45 // todo delete
 	AuthTrafficTimeout := time.Second * 90 // todo delete
-	fmt.Println("trafficTimeout run", w.trafficTimeout)
+
 	go func() {
 		defer func() {
 			fmt.Printf("%s, trafficMonitor finish wg: %v\n", w.exchangeName, w.Wg)
@@ -654,7 +655,7 @@ func (w *Websocket) trafficMonitor() {
 					log.Warnf(log.WebsocketMgr, "Unhandled traffic alert for url: %s", t)
 				}
 			case <-trafficTimer.C: // Falls through when timer runs out
-				//fmt.Println("trafficTimer:", w.Conn.GetURL())
+				fmt.Printf("%s, trafficTimer.C !!!. wg: %v\n", w.exchangeName, w.Wg)
 				if w.verbose {
 					log.Warnf(log.WebsocketMgr,
 						"%v websocket: has not received a traffic alert in %v. Reconnecting",

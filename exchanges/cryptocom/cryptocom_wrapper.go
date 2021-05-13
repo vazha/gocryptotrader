@@ -630,8 +630,11 @@ func (c *Cryptocom) GetOrderInfo(orderID string, pair currency.Pair, assetType a
 		format.Delimiter)
 	if err != nil {
 		log.Errorf(log.ExchangeSys,
-			"%s GetOrderInfo unable to parse currency pair: %s\n",
+			"%s GetOrderInfo for: %v unable to parse currency pair: %v, delimiter: %v, Err: %s\n",
 			c.Name,
+			orderID,
+			o.OrderInfo.InstrumentName,
+			format.Delimiter,
 			err)
 	}
 	od.Exchange = c.Name
