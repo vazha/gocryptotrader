@@ -788,6 +788,7 @@ func (k *Kraken) wsProcessOrderBook(channelData *WebsocketChannelData, data map[
 			defer k.wsRequestMtx.Unlock()
 			err := k.wsProcessOrderBookUpdate(channelData, askData, bidData, checksum)
 			if err != nil {
+				/*
 				go func(resub *stream.ChannelSubscription) {
 					// This was locking the main websocket reader routine and a
 					// backlog occurred. So put this into it's own go routine.
@@ -808,12 +809,15 @@ func (k *Kraken) wsProcessOrderBook(channelData *WebsocketChannelData, data map[
 								resub,
 								errSub)
 						}
+					}else{
+						fmt.Println("ResubscribeToChannel OK")
 					}
 				}(&stream.ChannelSubscription{
 					Channel:  krakenWsOrderbook,
 					Currency: channelData.Pair,
 					Asset:    asset.Spot,
 				})
+				 */
 				return err
 			}
 		}
