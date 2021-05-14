@@ -38,7 +38,7 @@ func (c *Cryptocom) WsConnect() error {
 	}
 	var dialer websocket.Dialer
 	//fmt.Printf("websocket.Dialer: %+v\n", dialer)
-	dialer.HandshakeTimeout = 5000000000
+	dialer.HandshakeTimeout = 50000000000
 	err := c.Websocket.Conn.Dial(&dialer, http.Header{})
 	if err != nil {
 		return err

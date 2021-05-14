@@ -87,7 +87,7 @@ func (k *Kraken) WsConnect() error {
 	}
 
 	var dialer websocket.Dialer
-	dialer.HandshakeTimeout = 5000000000
+	dialer.HandshakeTimeout = 50000000000
 	err := k.Websocket.Conn.Dial(&dialer, http.Header{})
 	if err != nil {
 		return err
