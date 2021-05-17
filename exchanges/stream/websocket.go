@@ -414,8 +414,11 @@ func (w *Websocket) Shutdown() error {
 	w.Wg.Wait()
 	fmt.Printf("%s, Shutdown command done. wg: %v\n", w.exchangeName, w.Wg)
 	w.ShutdownC = make(chan struct{})
+	fmt.Printf("%s, Shutdown command done_1. wg: %v\n", w.exchangeName, w.Wg)
 	w.setConnectedStatus(false)
+	fmt.Printf("%s, Shutdown command done_2. wg: %v\n", w.exchangeName, w.Wg)
 	w.setConnectingStatus(false)
+	fmt.Printf("%s, Shutdown command done_3. wg: %v\n", w.exchangeName, w.Wg)
 
 	if connErr != nil {
 		return connErr
@@ -696,6 +699,7 @@ func (w *Websocket) trafficMonitor() {
 							w.exchangeName, err)
 					}
 				}
+				fmt.Printf("%s, trafficAuthTimer_2. wg: %v\n", w.exchangeName, w.Wg)
 				w.setTrafficMonitorRunning(false)
 				return
 			}
