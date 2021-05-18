@@ -391,13 +391,18 @@ func (w *Websocket) Shutdown() error {
 			w.exchangeName)
 	}
 
-	defer w.Orderbook.FlushBuffer()
-	//fmt.Println("Shutdown_01")
+	//defer w.Orderbook.FlushBuffer()
+	defer func() {
+		fmt.Printf("%s, Shutdown, before FlushBuffer.\n", w.exchangeName)
+		w.Orderbook.FlushBuffer()
+		fmt.Printf("%s, Shutdown, after FlushBuffer.\n", w.exchangeName)
+	}()
+
 	var connErr, AuthConnErr error
 	if w.Conn != nil {
 		connErr = w.Conn.Shutdown()
 	}
-	//fmt.Println("Shutdown_02")
+
 	if w.AuthConn != nil {
 		AuthConnErr = w.AuthConn.Shutdown()
 	}
@@ -410,15 +415,12 @@ func (w *Websocket) Shutdown() error {
 
 	fmt.Printf("%s, Shutdown command sent. wg: %v\n", w.exchangeName, w.Wg)
 	close(w.ShutdownC)
-	fmt.Printf("%s, Shutdown command pre. wg: %v\n", w.exchangeName, w.Wg)
 	w.Wg.Wait()
 	fmt.Printf("%s, Shutdown command done. wg: %v\n", w.exchangeName, w.Wg)
 	w.ShutdownC = make(chan struct{})
-	fmt.Printf("%s, Shutdown command done_1. wg: %v\n", w.exchangeName, w.Wg)
 	w.setConnectedStatus(false)
-	fmt.Printf("%s, Shutdown command done_2. wg: %v\n", w.exchangeName, w.Wg)
 	w.setConnectingStatus(false)
-	fmt.Printf("%s, Shutdown command done_3. wg: %v\n", w.exchangeName, w.Wg)
+	fmt.Printf("%s, Shutdown command done_ok. wg: %v\n", w.exchangeName, w.Wg)
 
 	if connErr != nil {
 		return connErr
@@ -677,6 +679,7 @@ func (w *Websocket) trafficMonitor() {
 							w.exchangeName, err)
 					}
 				}
+				fmt.Printf("%s, trafficTimer_2. wg: %v\n", w.exchangeName, w.Wg)
 				w.setTrafficMonitorRunning(false)
 				return
 			case <-trafficAuthTimer.C: // Falls through when auth timer runs out

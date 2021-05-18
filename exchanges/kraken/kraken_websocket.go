@@ -115,7 +115,6 @@ func (k *Kraken) WsConnect() error {
 					err)
 			} else {
 				go k.wsFunnelConnectionData(k.Websocket.AuthConn, comms)
-
 				err = k.wsAuthPingHandler()
 				if err != nil {
 					log.Errorf(log.ExchangeSys,
