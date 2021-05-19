@@ -600,6 +600,9 @@ func (w *Websocket) trafficMonitor() {
 
 	w.trafficTimeout = time.Second * 45 // todo delete
 	AuthTrafficTimeout := time.Second * 90 // todo delete
+	if strings.EqualFold(w.GetName(), "cryptocom") {
+		AuthTrafficTimeout = time.Second * 120
+	}
 
 	go func() {
 		defer func() {
