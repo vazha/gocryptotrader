@@ -141,7 +141,7 @@ func (k *Kraken) wsFunnelConnectionData(ws stream.Connection, comms chan stream.
 	//k.Websocket.Wg.Add(1)
 	//defer k.Websocket.Wg.Done()
 	defer func() {
-		fmt.Printf("%s, wsFunnelConnectionData exit, wg: %v\n", k.Name, k.Websocket.Wg)
+		fmt.Printf("%s, wsFunnelConnectionData exit.\n", k.Name)
 	}()
 
 	for {
@@ -332,8 +332,8 @@ func (k *Kraken) wsHandleData(respRaw []byte) error {
 				}
 
 				if !isChannelExist && status.RequestID > 0 {
-					return fmt.Errorf("can't send ws incoming data to Matched channel with RequestID: %d",
-						status.RequestID)
+					return fmt.Errorf("can't send ws incoming data to Matched channel with RequestID: %v",
+						status)
 				}
 			case krakenWsSubscriptionStatus:
 				var sub wsSubscription

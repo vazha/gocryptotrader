@@ -76,7 +76,7 @@ func (c *Cryptocom) wsFunnelConnectionData(ws stream.Connection, comms chan stre
 	//c.Websocket.Wg.Add(1)
 	//defer c.Websocket.Wg.Done()
 	defer func() {
-		fmt.Printf("%s, wsFunnelConnectionData exit, wg: %v\n", c.Name, c.Websocket.Wg)
+		fmt.Printf("%s, wsFunnelConnectionData exit.\n", c.Name)
 	}()
 
 	for {
