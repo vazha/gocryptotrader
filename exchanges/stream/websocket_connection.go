@@ -33,6 +33,8 @@ func (w *WebsocketConnection) SendMessageReturnResponse(signature, request inter
 		return nil, err
 	}
 
+	log.Warnf(log.ConfigMgr, "ResponseMaxLimit: %v, signature: %v\n", w.ResponseMaxLimit, signature)
+	log.Warnf(log.ConfigMgr, "Match.set: %+v\n", m)
 	timer := time.NewTimer(w.ResponseMaxLimit)
 
 	select {

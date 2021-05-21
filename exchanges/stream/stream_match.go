@@ -2,6 +2,7 @@ package stream
 
 import (
 	"errors"
+	"github.com/vazha/gocryptotrader/log"
 	"sync"
 )
 
@@ -33,6 +34,7 @@ func (m *Match) IncomingWithData(signature interface{}, data []byte) bool {
 	defer m.Unlock()
 	ch, ok := m.m[signature]
 	if ok {
+		log.Warnf(log.ConfigMgr, "Channel found: %v.\n", signature)
 		select {
 		case ch <- data:
 		default:

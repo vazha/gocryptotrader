@@ -315,6 +315,7 @@ func (k *Kraken) wsHandleData(respRaw []byte) error {
 
 				var isChannelExist bool
 				if status.RequestID > 0 {
+					log.Warnf(log.ConfigMgr, "WS look for channel: %v.\n", status.RequestID)
 					isChannelExist = k.Websocket.Match.IncomingWithData(status.RequestID, respRaw)
 				}
 
@@ -332,7 +333,7 @@ func (k *Kraken) wsHandleData(respRaw []byte) error {
 				}
 
 				if !isChannelExist && status.RequestID > 0 {
-					return fmt.Errorf("can't send ws incoming data to Matched channel with RequestID: %v",
+					return fmt.Errorf("can't send ws incoming data to Matched channel with Request: %v",
 						status)
 				}
 			case krakenWsSubscriptionStatus:
