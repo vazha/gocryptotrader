@@ -35,7 +35,7 @@ func (w *WebsocketConnection) SendMessageReturnResponse(signature, request inter
 
 	log.Warnf(log.ConfigMgr, "ResponseMaxLimit: %v, signature: %v\n", w.ResponseMaxLimit, signature)
 	log.Warnf(log.ConfigMgr, "Match.set: %+v\n", m)
-	timer := time.NewTimer(w.ResponseMaxLimit)
+	timer := time.NewTimer(w.ResponseMaxLimit) // 7 sec
 
 	select {
 	case payload := <-m.C:

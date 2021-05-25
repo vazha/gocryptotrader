@@ -384,7 +384,14 @@ func (w *Orderbook) LoadSnapshot(book *orderbook.Base) error {
 		m3.ob.Bids = book.Bids
 		m3.ob.Asks = book.Asks
 	}
-	w.dataHandler <- book
+	//w.dataHandler <- book
+
+	select {
+	case w.dataHandler <- book:
+	default:
+		fmt.Printf("%s, LoadSnapshot fail", w.exchangeName)
+		return fmt.Errorf("LoadSnapshot fail, mutex locked")
+	}
 	return nil
 }
 
