@@ -387,17 +387,13 @@ func (w *Orderbook) LoadSnapshot(book *orderbook.Base) error {
 	}
 	//w.dataHandler <- book
 
-	t:= time.Tick(time.Second * 5)
+	t:= time.Tick(time.Second * 90)
 	select {
 	case w.dataHandler <- book:
 	case <- t:
 		fmt.Printf("%s, LoadSnapshot fail", w.exchangeName)
 		return fmt.Errorf("LoadSnapshot fail, mutex locked")
 	}
-
-//default:
-//	fmt.Printf("%s, LoadSnapshot fail", w.exchangeName)
-//	return fmt.Errorf("LoadSnapshot fail, mutex locked")
 
 	return nil
 }
