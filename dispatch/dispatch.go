@@ -182,6 +182,8 @@ func (d *Dispatcher) relayer(i *sync.WaitGroup) {
 	d.wg.Add(1)
 	timeout := time.NewTimer(0)
 	i.Done()
+	x := atomic.LoadInt32(&d.count)
+
 	for {
 		select {
 		case j := <-d.jobs:
@@ -212,6 +214,7 @@ func (d *Dispatcher) relayer(i *sync.WaitGroup) {
 				select {
 				case d.routes[j.ID][i] <- j.Data:
 				case <-timeout.C:
+					fmt.Println("relayer timeout:", x, len(d.routes[j.ID]), j.ID)
 				}
 			}
 			d.rMtx.RUnlock()

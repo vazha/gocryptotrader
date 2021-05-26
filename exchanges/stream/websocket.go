@@ -678,7 +678,7 @@ func (w *Websocket) trafficMonitor() {
 					err := w.Shutdown()
 					if err != nil {
 						log.Errorf(log.WebsocketMgr,
-							"%v websocket: trafficMonitor shutdown err: %s",
+							"%v websocket, trafficMonitor shutdown err: %s",
 							w.exchangeName, err)
 					}
 				}
@@ -701,7 +701,7 @@ func (w *Websocket) trafficMonitor() {
 					err := w.Shutdown()
 					if err != nil {
 						log.Errorf(log.WebsocketMgr,
-							"%v auth websocket: trafficMonitor shutdown err: %s",
+							"%v auth websocket, trafficMonitor shutdown err: %s",
 							w.exchangeName, err)
 					}
 				}

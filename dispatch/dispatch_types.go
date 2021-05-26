@@ -16,7 +16,7 @@ const (
 
 	// DefaultHandshakeTimeout defines a workers max length of time to wait on a
 	// an unbuffered channel for a receiver before moving on to next route
-	DefaultHandshakeTimeout = 200 * time.Nanosecond
+	DefaultHandshakeTimeout = 400 * time.Nanosecond // wa 200
 
 	errNotInitialised   = "dispatcher not initialised"
 	errAlreadyStarted   = "dispatcher already started"
