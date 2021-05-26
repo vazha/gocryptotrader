@@ -391,7 +391,7 @@ func (w *Orderbook) LoadSnapshot(book *orderbook.Base) error {
 	select {
 	case w.dataHandler <- book:
 	case <- t:
-		fmt.Printf("%s, LoadSnapshot fail", w.exchangeName)
+		fmt.Printf("%s, LoadSnapshot fail\n", w.exchangeName)
 		return fmt.Errorf("LoadSnapshot fail, mutex locked")
 	}
 
