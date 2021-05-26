@@ -86,6 +86,7 @@ func (b *Binance) WsConnect() error {
 	})
 
 	go b.wsReadData()
+	b.obm = nil
 	b.setupOrderbookManager()
 	return nil
 }
