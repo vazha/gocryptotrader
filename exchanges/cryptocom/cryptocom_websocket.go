@@ -142,14 +142,14 @@ func (c *Cryptocom) wsReadData(comms chan stream.Response) {
 		case <-c.Websocket.ShutdownC:
 			return
 		case resp := <-comms:
-			go func() {
+			// go func() {
 				err := c.wsHandleData(resp)
 				if err != nil {
 					c.Websocket.DataHandler <- fmt.Errorf("%s - unhandled websocket data: %v",
 						c.Name,
 						err)
 				}
-			}()
+			//}()
 		}
 	}
 }
