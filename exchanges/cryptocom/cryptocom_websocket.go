@@ -142,14 +142,14 @@ func (c *Cryptocom) wsReadData(comms chan stream.Response) {
 		case <-c.Websocket.ShutdownC:
 			return
 		case resp := <-comms:
-			// go func() {
+			 go func() {
 				err := c.wsHandleData(resp)
 				if err != nil {
 					c.Websocket.DataHandler <- fmt.Errorf("%s - unhandled websocket data: %v",
 						c.Name,
 						err)
 				}
-			//}()
+			}()
 		}
 	}
 }
@@ -203,6 +203,10 @@ func (c *Cryptocom) wsHandleData(resp stream.Response) error {
 	case result.Method == "subscribe" && result.Result.Channel == "":
 		return nil
 	case result.Method == "public/heartbeat":
+		//err = c.SendHeartbeat(result.ID, resp.Auth)
+		//log.Warnf(log.ExchangeSys, "heartbeat: %v Auth: %v, Err: %v", result.ID, resp.Auth, err)
+		//fmt.Printf("heartbeat: %v %v, %v\n", result.ID, resp.Auth, err)
+		time.Sleep(time.Millisecond * 500)
 		return c.SendHeartbeat(result.ID, resp.Auth)
 	case result.Result.Channel == "user.balance":
 		// fmt.Println("user.balance:", result.Result.Data)
