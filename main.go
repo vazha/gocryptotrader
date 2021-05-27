@@ -20,6 +20,8 @@ import (
 	gctlog "github.com/vazha/gocryptotrader/log"
 	"github.com/vazha/gocryptotrader/portfolio/withdraw"
 	"github.com/vazha/gocryptotrader/signaler"
+
+	//_ "net/http/pprof"
 )
 
 func main() {
@@ -127,6 +129,10 @@ func main() {
 	}
 
 	gctscript.Setup()
+
+	//go func() {
+	//	log.Println(http.ListenAndServe("localhost:6060", nil))
+	//}()
 
 	engine.PrintSettings(&engine.Bot.Settings)
 	if err = engine.Bot.Start(); err != nil {
