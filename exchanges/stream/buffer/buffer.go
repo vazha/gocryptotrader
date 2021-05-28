@@ -7,6 +7,7 @@ import (
 	"github.com/vazha/gocryptotrader/exchanges/asset"
 	"github.com/vazha/gocryptotrader/exchanges/orderbook"
 	"sort"
+	"time"
 )
 
 const packageError = "websocket orderbook buffer error: %w"
@@ -383,15 +384,17 @@ func (w *Orderbook) LoadSnapshot(book *orderbook.Base) error {
 		m3.ob.Bids = book.Bids
 		m3.ob.Asks = book.Asks
 	}
-	w.dataHandler <- book
+	//w.dataHandler <- book
 
-	//t:= time.Tick(time.Second * 90)
-	//select {
-	//case w.dataHandler <- book:
-	//case <- t:
-	//	fmt.Printf("%s, LoadSnapshot fail\n", w.exchangeName)
-	//	return fmt.Errorf("LoadSnapshot fail, mutex locked")
-	//}
+	t:= time.NewTimer(time.Second * 90)
+	defer t.Stop()
+
+	select {
+	case w.dataHandler <- book:
+	case <- t.C:
+		fmt.Printf("%s, LoadSnapshot fail\n", w.exchangeName)
+		return fmt.Errorf("LoadSnapshot fail, mutex locked")
+	}
 
 	return nil
 }
