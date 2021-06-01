@@ -46,7 +46,7 @@ func (o *orderStore) GetByExchangeAndID(exchange, id string) (*order.Detail, err
 			return r[x], nil
 		}
 	}
-	return nil, ErrOrderNotFound
+	return nil, fmt.Errorf("order %s does not exist for %s", id, exchange)
 }
 
 // GetByExchange returns orders by exchange
@@ -72,7 +72,7 @@ func (o *orderStore) GetByInternalOrderID(internalOrderID string) (*order.Detail
 			}
 		}
 	}
-	return nil, ErrOrderNotFound
+	return nil, fmt.Errorf("order %s does not exist", internalOrderID)
 }
 
 func (o *orderStore) exists(det *order.Detail) bool {

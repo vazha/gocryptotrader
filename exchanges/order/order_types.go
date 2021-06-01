@@ -228,6 +228,7 @@ const (
 	PartiallyFilled     Status = "PARTIALLY_FILLED"
 	Filled              Status = "FILLED"
 	Cancelled           Status = "CANCELLED"
+	Pending             Status = "PENDING"
 	PendingCancel       Status = "PENDING_CANCEL"
 	InsufficientBalance Status = "INSUFFICIENT_BALANCE"
 	MarketUnavailable   Status = "MARKET_UNAVAILABLE"
