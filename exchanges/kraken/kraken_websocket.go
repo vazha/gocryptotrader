@@ -207,6 +207,7 @@ func (k *Kraken) wsHandleData(respRaw []byte) error {
 			}
 		}
 		if _, ok := dataResponse[1].(string); ok {
+			fmt.Println("DEBUG_1", dataResponse)
 			err = k.wsHandleAuthDataResponse(dataResponse)
 			if err != nil {
 				return err
@@ -538,6 +539,7 @@ func (k *Kraken) wsProcessOpenOrders(ownOrders interface{}) error {
 				return err
 			}
 			for key, val := range result {
+				fmt.Printf("DEBUG_2: %+v\n", key)
 				var oStatus order.Status
 				oStatus, err = order.StringToOrderStatus(val.Status)
 				if err != nil {
@@ -548,6 +550,7 @@ func (k *Kraken) wsProcessOpenOrders(ownOrders interface{}) error {
 					}
 				}
 				if val.Description.Price > 0 {
+					fmt.Printf("DEBUG_3: %+v\n", val)
 					oSide, err := order.StringToOrderSide(val.Description.Type)
 					if err != nil {
 						k.Websocket.DataHandler <- order.ClassificationError{
