@@ -330,7 +330,7 @@ type CancelOrderResponse struct {
 type QueryOrderData struct {
 	Symbol        string  `json:"symbol"`
 	OrderID       int64   `json:"orderId"`
-	CummulativeQuoteQty float64 `json:"cummulativeQuoteQty"`
+	CummulativeQuoteQty float64 `json:"cummulativeQuoteQty,string"`
 	Code          int     `json:"code"`
 	Msg           string  `json:"msg"`
 
