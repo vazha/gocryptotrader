@@ -698,6 +698,8 @@ func (b *Binance) WithdrawCrypto(asset, address, addressTag, name, amount string
 		params.Set("network", "BSC")
 	}
 
+	fmt.Printf("Binance withdrawal param: %+v\n", params)
+
 	if err := b.SendAuthHTTPRequest(http.MethodPost, path, params, &resp); err != nil {
 		return "", err
 	}
