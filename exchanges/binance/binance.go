@@ -694,6 +694,10 @@ func (b *Binance) WithdrawCrypto(asset, address, addressTag, name, amount string
 		params.Set("addressTag", addressTag)
 	}
 
+	if strings.EqualFold(asset, "bnb") {
+		params.Set("network", "BSC")
+	}
+
 	if err := b.SendAuthHTTPRequest(http.MethodPost, path, params, &resp); err != nil {
 		return "", err
 	}
