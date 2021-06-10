@@ -94,7 +94,9 @@ func (p *Poloniex) wsReadData() {
 		}
 		err := p.wsHandleData(resp.Raw)
 		if err != nil {
-			p.Websocket.DataHandler <- err
+			if !strings.Contains(err.Error(), "for Pair") { // polo often add new pairs...
+				p.Websocket.DataHandler <- err
+			}
 		}
 	}
 }
