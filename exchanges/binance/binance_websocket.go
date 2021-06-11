@@ -175,6 +175,7 @@ func (b *Binance) wsHandleData(respRaw []byte) error {
 				var data wsAccountPosition
 				err := json.Unmarshal(respRaw, &data)
 				if err != nil {
+					fmt.Printf("outboundAccountPosition: %+v\n", string(respRaw))
 					return fmt.Errorf("%v - Could not convert to outboundAccountPosition structure %s",
 						b.Name,
 						err)
@@ -193,6 +194,7 @@ func (b *Binance) wsHandleData(respRaw []byte) error {
 				var data wsOrderUpdate
 				err := json.Unmarshal(respRaw, &data)
 				if err != nil {
+					fmt.Printf("executionReport: %+v\n", string(respRaw))
 					return fmt.Errorf("%v - Could not convert to executionReport structure %s",
 						b.Name,
 						err)
