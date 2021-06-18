@@ -241,7 +241,7 @@ type Order struct {
 	TimeInForce  string  `json:"time_in_force"`
 
 	// user.order  subscriptions
-	Reason  string  `json:"reason"`
+	Reason  int64  `json:"reason"`
 	ExecInst  string  `json:"exec_inst"`
 	TriggerPrice  float64  `json:"trigger_price"`
 }
