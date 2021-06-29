@@ -837,9 +837,11 @@ func genCert(targetDir string) error {
 	}
 
 	dnsNames := []string{host}
-	if host != "localhost" {
-		dnsNames = append(dnsNames, "localhost")
-	}
+	//if host != "localhost" {
+	//	//dnsNames = append(dnsNames, "localhost")
+	//
+	//}
+	dnsNames = append(dnsNames, "localhost", "gocryptotrader")
 
 	template := x509.Certificate{
 		SerialNumber: serialNumber,

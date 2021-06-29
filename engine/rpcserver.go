@@ -402,6 +402,15 @@ func (s *RPCServer) GetTickers(_ context.Context, r *gctrpc.GetTickersRequest) (
 // GetOrderbook returns an orderbook for a specific exchange, currency pair
 // and asset type
 func (s *RPCServer) GetOrderbook(_ context.Context, r *gctrpc.GetOrderbookRequest) (*gctrpc.OrderbookResponse, error) {
+	//resp2 := &gctrpc.OrderbookResponse{
+	//	Pair:        r.Pair,
+	//	//Bids:        bids,
+	//	//Asks:        asks,
+	//	LastUpdated: time.Now().Unix(),
+	//	AssetType:   r.AssetType,
+	//}
+	//return resp2, nil
+
 	a, err := asset.New(r.AssetType)
 	if err != nil {
 		return nil, err
